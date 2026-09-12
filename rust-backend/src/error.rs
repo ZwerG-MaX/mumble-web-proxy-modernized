@@ -40,8 +40,8 @@ impl Error {
     }
 }
 
-impl From<rtp::Error> for Error {
-    fn from(err: rtp::Error) -> Self {
+impl From<crate::rtp::Error> for Error {
+    fn from(err: crate::rtp::Error) -> Self {
         Error::Rtp(Box::new(err))
     }
 }

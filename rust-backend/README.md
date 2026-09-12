@@ -17,13 +17,13 @@
 
 ```bash
 # Debian/Ubuntu
-sudo apt-get install libnice-dev libssl-dev clang protobuf-compiler pkg-config cmake git
+sudo apt-get install libnice-dev libssl-dev clang protobuf-compiler pkg-config
 
 # Fedora
-sudo dnf install libnice-devel openssl-devel clang protobuf-compiler pkgconf-pkg-config cmake git
+sudo dnf install libnice-devel openssl-devel clang protobuf-compiler pkgconf-pkg-config
 
 # Arch Linux
-sudo pacman -S libnice openssl clang protobuf pkgconf cmake git
+sudo pacman -S libnice openssl clang protobuf pkgconf
 ```
 
 ### Rust зависимости
@@ -32,7 +32,7 @@ sudo pacman -S libnice openssl clang protobuf pkgconf cmake git
 - `tokio` v1.35 — async runtime
 - `mumble-protocol` v0.4 — протокол Mumble
 - `libnice` v0.3 — ICE implementation
-- `rtp` (johni0702/rtp) — RTP/RTCP/DTLS-SRTP
+- `rtp` (собственная реализация) — RTP/RTCP/DTLS-SRTP
 - `webrtc-sdp` v0.3 — SDP parsing
 - `openssl` v0.10 — криптография
 - `tracing` — структурированное логирование
@@ -94,7 +94,13 @@ ice-ipv6 = "2001:db8::1"
 src/
 ├── main.rs           # Точка входа, CLI parsing, WebSocket listener
 ├── connection.rs     # Обработчик соединений, ICE/DTLS-SRTP/RTP логика
-└── error.rs          # Типы ошибок
+├── error.rs          # Типы ошибок
+└── rtp/              # Собственная реализация RTP
+    ├── mod.rs        # Модуль RTP
+    ├── rfc3550.rs    # RTP/RTCP пакеты (RFC 3550)
+    ├── rfc5761.rs    # RTP/RTCP multiplexing (RFC 5761)
+    ├── rfc5764.rs    # DTLS-SRTP (RFC 5764)
+    └── traits.rs     # Трейты для чтения/записи пакетов
 ```
 
 ### Основные компоненты
@@ -117,6 +123,26 @@ src/
 - Типизированные ошибки через `thiserror`
 - Конвертация из различных типов ошибок
 - Методы для определения типа ошибки
+
+#### rtp/
+Собственная реализация RTP протокола, преобразованная из оригинального репозитория johni0702/rtp для работы с современным Rust:
+
+- **rfc3550.rs** — Полная реализация RTP и RTCP пакетов согласно RFC 3550
+  - RtpPacket, RtpFixedHeader, RtpExtension
+  - RtcpPacket (SR, RR, SDES, BYE, APP)
+  - RtpPacketReader/Writer, RtcpPacketReader/Writer
+  
+- **rfc5761.rs** — Мультиплексирование RTP/RTCP согласно RFC 5761
+  - MuxPacketReader/Writer
+  - MuxedPacket (Rtp или Rtcp)
+  
+- **rfc5764.rs** — DTLS-SRTP согласно RFC 5764
+  - DtlsSrtp wrapper
+  - StreamComponent для UDP
+  
+- **traits.rs** — Базовые трейты
+  - ReadPacket<T> — чтение пакетов из byte stream
+  - WritePacket<T> — запись пакетов в byte stream
 
 ## 🐳 Docker
 

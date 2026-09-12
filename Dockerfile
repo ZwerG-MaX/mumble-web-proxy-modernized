@@ -1,6 +1,6 @@
 # Multi-stage build for mumble-web-proxy
 # Build stage
-FROM rust:1.75-bookworm AS builder
+FROM rust:1.85-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -9,8 +9,6 @@ RUN apt-get update && apt-get install -y \
     clang \
     protobuf-compiler \
     pkg-config \
-    cmake \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
