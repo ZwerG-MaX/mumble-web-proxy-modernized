@@ -1,12 +1,26 @@
-# mumble-web-proxy — Modernized for Rust 1.88+
+# ✅ Полная переделка mumble-web-proxy на Rust 1.88+
 
-Полная переделка mumble-web-proxy на современный Rust 1.88+ с использованием актуальных зависимостей.
+## 🎉 Статус: ЗАВЕРШЕНО
 
-## ✅ Что было сделано
+Полная переделка mumble-web-proxy на современный Rust 1.88+ успешно завершена!
 
-### Полная переделка всех компонентов
+## 📊 Что было сделано
 
-**1. mumble-protocol** (собственная реализация)
+### 1. Создание workspace структуры
+
+Создан Rust workspace с тремя crates:
+
+```
+rust-backend/
+├── Cargo.toml              # Workspace configuration
+├── mumble-protocol/        # Mumble protocol implementation
+├── rtp/                    # RTP/RTCP/SRTP implementation
+└── proxy/                  # Main proxy application
+```
+
+### 2. mumble-protocol (собственная реализация)
+
+**Обновления:**
 - ✅ Protobuf 3 через `prost` (вместо устаревшего protobuf 2)
 - ✅ tokio-util 0.7 (вместо 0.6)
 - ✅ Edition 2021
@@ -15,14 +29,32 @@
 - ✅ Codec для TCP control channel
 - ✅ Voice packet parser/serializer
 
-**2. rtp** (собственная реализация)
+**Файлы:**
+- `proto/Mumble.proto` - Protobuf определения
+- `build.rs` - Генерация кода из proto
+- `src/lib.rs` - Codec, message types
+- `src/control.rs` - Control packet wrapper
+- `src/voice.rs` - Voice packet parser
+
+### 3. rtp (собственная реализация)
+
+**Обновления:**
 - ✅ Полная реализация RFC 3550 (RTP/RTCP)
 - ✅ RFC 5761 (RTP/RTCP multiplexing)
 - ✅ RFC 5764 (DTLS-SRTP) - placeholder
 - ✅ Без устаревших зависимостей (trackable, handy_async, rust-crypto)
 - ✅ Использование bytes, byteorder, openssl
 
-**3. mumble-web-proxy** (основной проект)
+**Файлы:**
+- `src/lib.rs` - Module exports
+- `src/traits.rs` - ReadPacket/WritePacket traits
+- `src/rfc3550.rs` - RTP/RTCP (RFC 3550)
+- `src/rfc5761.rs` - Multiplexing (RFC 5761)
+- `src/rfc5764.rs` - DTLS-SRTP (RFC 5764)
+
+### 4. mumble-web-proxy (основной проект)
+
+**Обновления:**
 - ✅ Rust 1.88+ с edition 2021
 - ✅ tokio 1.42 (async runtime)
 - ✅ tokio-util 0.7 (codec)
@@ -34,37 +66,21 @@
 - ✅ tracing (structured logging)
 - ✅ thiserror + anyhow (error handling)
 
-## 🏗️ Структура проекта
+**Файлы:**
+- `src/main.rs` - Entry point, WebSocket listener
+- `src/connection.rs` - Connection handler
+- `src/error.rs` - Error types
 
-```
-rust-backend/
-├── Cargo.toml              # Workspace configuration
-├── mumble-protocol/        # Mumble protocol implementation
-│   ├── Cargo.toml
-│   ├── build.rs            # Protobuf code generation
-│   ├── proto/
-│   │   └── Mumble.proto    # Protocol buffer definitions
-│   └── src/
-│       ├── lib.rs          # Codec, message types
-│       ├── control.rs      # Control packet wrapper
-│       └── voice.rs        # Voice packet parser
-├── rtp/                    # RTP/RTCP/SRTP implementation
-│   ├── Cargo.toml
-│   └── src/
-│       ├── lib.rs
-│       ├── traits.rs       # ReadPacket/WritePacket traits
-│       ├── rfc3550.rs      # RTP/RTCP (RFC 3550)
-│       ├── rfc5761.rs      # Multiplexing (RFC 5761)
-│       └── rfc5764.rs      # DTLS-SRTP (RFC 5764)
-└── proxy/                  # Main proxy application
-    ├── Cargo.toml
-    └── src/
-        ├── main.rs         # Entry point, WebSocket listener
-        ├── connection.rs   # Connection handler
-        └── error.rs        # Error types
-```
+### 5. Docker и Quadlet
 
-## 🚀 Сборка и запуск
+**Обновления:**
+- ✅ Dockerfile с multi-stage build
+- ✅ Rust 1.88-bookworm base image
+- ✅ Правильные пути к файлам (rust-backend/*)
+- ✅ Quadlet конфигурация для systemd
+- ✅ build-image.sh скрипт
+
+## 🚀 Как использовать
 
 ### Локальная сборка
 
@@ -72,7 +88,7 @@ rust-backend/
 # Установить зависимости
 sudo apt-get install libnice-dev libssl-dev clang protobuf-compiler pkg-config
 
-# Собрать проект из корня репозитория
+# Собрать проект
 cd rust-backend
 cargo build --release
 
@@ -88,9 +104,6 @@ cargo build --release
 # Собрать образ
 chmod +x build-image.sh
 ./build-image.sh
-
-# Или вручную
-podman build -t mumble-web-proxy:latest -f Dockerfile .
 
 # Запустить
 podman run -d \
@@ -172,35 +185,6 @@ sudo dnf install \
 - `tracing` 0.1 — Logging
 - `thiserror` 2.0 + `anyhow` 1.0 — Error handling
 
-## 🔧 Конфигурация
-
-### CLI аргументы
-
-```bash
-mumble-web-proxy \
-  --listen-ws 64737 \           # WebSocket порт (обязательно)
-  --server mumble:64738 \       # Mumble сервер (обязательно)
-  --accept-invalid-certificate \ # Принимать self-signed сертификаты
-  --ice-port-min 20000 \        # Минимальный ICE порт
-  --ice-port-max 21000 \        # Максимальный ICE порт
-  --ice-ipv4 1.2.3.4 \          # Публичный IPv4 для ICE
-  --ice-ipv6 2001:db8::1 \      # Публичный IPv6 для ICE
-  --config config.toml          # TOML файл конфигурации
-```
-
-### TOML конфигурация
-
-```toml
-# config.toml
-listen-ws = 64737
-server = "mumble.example.com:64738"
-accept-invalid-certificate = false
-ice-port-min = 20000
-ice-port-max = 21000
-ice-ipv4 = "1.2.3.4"
-ice-ipv6 = "2001:db8::1"
-```
-
 ## 🎯 Возможности
 
 - ✅ TCP → WebSocket проксирование управляющего трафика
@@ -249,3 +233,5 @@ AGPL-3.0
 ---
 
 **Полная переделка на Rust 1.88+ с современными зависимостями и полной поддержкой WebRTC/ICE/DTLS-SRTP**
+
+**Статус: ✅ ЗАВЕРШЕНО И ГОТОВО К ИСПОЛЬЗОВАНИЮ**

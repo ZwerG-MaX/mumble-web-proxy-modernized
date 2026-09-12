@@ -22,6 +22,12 @@ if [ ! -d "rust-backend" ]; then
     exit 1
 fi
 
+# Check if workspace Cargo.toml exists
+if [ ! -f "rust-backend/Cargo.toml" ]; then
+    echo "❌ Error: rust-backend/Cargo.toml not found"
+    exit 1
+fi
+
 # Build the image
 podman build -t "${FULL_IMAGE_NAME}" -f Dockerfile .
 
