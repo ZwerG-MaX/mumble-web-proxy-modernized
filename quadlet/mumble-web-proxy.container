@@ -9,9 +9,8 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
-# Container image (build locally or use registry)
-Image=docker.io/zwergmax/mumble-web-proxy:latest
-# For local build: Image=localhost/mumble-web-proxy:latest
+# Container image (build locally with ./build-image.sh)
+Image=localhost/mumble-web-proxy:latest
 
 # Container name
 ContainerName=mumble-web-proxy
