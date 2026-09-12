@@ -163,14 +163,14 @@ ss -tlnp | grep 64737
 - **Font Awesome** — иконки
 
 ### Backend (Rust)
-- **Rust 2021** — современная редакция
+- **Rust 1.85** — современная версия с edition 2024
 - **Tokio** — async runtime
 - **clap v4** — CLI parsing
 - **mumble-protocol** — протокол Mumble
 - **tungstenite** — WebSocket
 - **native-tls** — TLS для upstream соединений
 - **libnice** — ICE для NAT traversal
-- **rtp** (johni0702/rtp) — RTP/RTCP/DTLS-SRTP
+- **rtp** (собственная реализация) — RTP/RTCP/DTLS-SRTP
 - **webrtc-sdp** — SDP parsing для WebRTC
 - **openssl** — криптография для DTLS
 - **tracing** — структурированное логирование

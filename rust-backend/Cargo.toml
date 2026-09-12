@@ -3,7 +3,7 @@ name = "mumble-web-proxy"
 version = "0.2.0"
 authors = ["Jonas Herzig <me@johni0702.de>"]
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.85"
 description = "Mumble to WebSocket+WebRTC proxy"
 license = "AGPL-3.0"
 repository = "https://github.com/ZwerG-MaX/mumble-web-proxy"
@@ -36,7 +36,6 @@ native-tls = "0.2"
 # WebRTC & ICE
 libnice = "0.3"
 webrtc-sdp = "0.3"
-rtp = { git = "https://github.com/johni0702/rtp", rev = "6c0223d", features = ["rfc5764-openssl"] }
 
 # Cryptography
 openssl = "0.10"
