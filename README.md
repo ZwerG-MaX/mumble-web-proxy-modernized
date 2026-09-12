@@ -47,7 +47,7 @@
 
 ### ✅ Полная поддержка WebRTC
 
-Текущая версия содержит **полную реализацию** прокси с поддержкой:
+Проект использует **оригинальный код** из репозитория Johni0702/mumble-web-proxy с полной поддержкой:
 - **ICE** (Interactive Connectivity Establishment) для NAT traversal
 - **DTLS-SRTP** для шифрования голосового трафика
 - **RTP/RTCP** для передачи голоса через WebRTC
@@ -55,9 +55,10 @@
 
 Используются следующие зависимости:
 - `libnice` — реализация ICE
-- `rtp` (из johni0702/rtp) — RTP/RTCP/DTLS-SRTP
+- `rtp` (из johni0702/rtp, rev 6c0223d) — RTP/RTCP/DTLS-SRTP
 - `webrtc-sdp` — парсинг SDP для WebRTC
 - `openssl` — криптография для DTLS
+- `mumble-protocol` — протокол Mumble с WebRTC расширениями
 
 ## 🚀 Быстрый старт
 
@@ -163,14 +164,14 @@ ss -tlnp | grep 64737
 - **Font Awesome** — иконки
 
 ### Backend (Rust)
-- **Rust 1.88** — современная версия с edition 2024
+- **Rust 1.88** — современная версия компилятора
 - **Tokio** — async runtime
 - **clap v4** — CLI parsing
 - **mumble-protocol** — протокол Mumble
 - **tungstenite** — WebSocket
 - **native-tls** — TLS для upstream соединений
 - **libnice** — ICE для NAT traversal
-- **rtp** (собственная реализация) — RTP/RTCP/DTLS-SRTP
+- **rtp** (johni0702/rtp) — RTP/RTCP/DTLS-SRTP
 - **webrtc-sdp** — SDP parsing для WebRTC
 - **openssl** — криптография для DTLS
 - **tracing** — структурированное логирование

@@ -1,38 +1,36 @@
-//! Connection handler for Mumble-WebRTC proxy
-//!
-//! This module manages the bidirectional proxy between a WebSocket client and a Mumble server,
-//! handling ICE/WebRTC setup, DTLS-SRTP negotiation, and voice packet transcoding.
-
-use std::collections::{BTreeMap, VecDeque};
-use std::ffi::CString;
-use std::future::Future;
-use std::net::IpAddr;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
-use std::time::Duration;
-
-use futures::{future::BoxFuture, pin_mut, ready, FutureExt, Sink, Stream};
+use futures::future::BoxFuture;
+use futures::pin_mut;
+use futures::ready;
+use futures::{Future, FutureExt, Sink, Stream};
 use libnice::ice;
-use mumble_protocol::control::{msgs, ControlPacket};
-use mumble_protocol::voice::{VoicePacket, VoicePacketPayload};
-use mumble_protocol::{Clientbound, Serverbound};
+use mumble_protocol::control::msgs;
+use mumble_protocol::control::ControlPacket;
+use mumble_protocol::voice::VoicePacket;
+use mumble_protocol::voice::VoicePacketPayload;
+use mumble_protocol::Clientbound;
+use mumble_protocol::Serverbound;
 use openssl::asn1::Asn1Time;
 use openssl::hash::MessageDigest;
 use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslMethod};
 use openssl::x509::X509;
-use crate::rtp::rfc3550::{
+use rtp::rfc3550::{
     RtcpCompoundPacket, RtcpPacket, RtcpPacketReader, RtcpPacketWriter, RtpFixedHeader, RtpPacket,
     RtpPacketReader, RtpPacketWriter,
 };
-use crate::rtp::rfc5761::{MuxPacketReader, MuxPacketWriter, MuxedPacket};
-use crate::rtp::rfc5764::DtlsSrtp;
-use crate::rtp::traits::{ReadPacket, WritePacket};
+use rtp::rfc5761::{MuxPacketReader, MuxPacketWriter, MuxedPacket};
+use rtp::rfc5764::DtlsSrtp;
+use rtp::traits::{ReadPacket, WritePacket};
+use std::collections::{BTreeMap, VecDeque};
+use std::ffi::CString;
+use std::net::IpAddr;
+use std::pin::Pin;
+use std::task::Context;
+use std::task::Poll;
+use std::time::Duration;
 use tokio::io;
 use tokio::time::Sleep;
-use tracing::{debug, info, warn};
 use webrtc_sdp::attribute_type::SdpAttribute;
 
 use crate::error::Error;
@@ -40,25 +38,17 @@ use crate::Config;
 
 type SessionId = u32;
 
-/// Represents a connected user in the Mumble session
 struct User {
-    /// Mumble session ID
-    session: u32,
-    /// RTP SSRC identifier
-    ssrc: u32,
-    /// Whether the user is currently transmitting audio
-    active: bool,
-    /// Timeout for detecting end of transmission
-    timeout: Option<Pin<Box<Sleep>>>,
-    /// Voice sequence number tracking
+    session: u32,                     // mumble session id
+    ssrc: u32,                        // ssrc id
+    active: bool,                     // whether the user is currently transmitting audio
+    timeout: Option<Pin<Box<Sleep>>>, // assume end of transmission if silent until then
     start_voice_seq_num: u64,
     highest_voice_seq_num: u64,
-    /// RTP sequence number offset
-    rtp_seq_num_offset: u32,
+    rtp_seq_num_offset: u32, // u32 because we also derive the timestamp from it
 }
 
 impl User {
-    /// Mark user as inactive (stopped talking)
     fn set_inactive(&mut self) -> Option<Frame> {
         self.timeout = None;
 
@@ -79,7 +69,6 @@ impl User {
         }
     }
 
-    /// Mark user as active (started talking)
     fn set_active(&mut self, target: u8) -> Option<Frame> {
         self.timeout = Some(Box::pin(tokio::time::sleep(Duration::from_millis(400))));
 
@@ -96,9 +85,8 @@ impl User {
     }
 }
 
-/// Manages a single client connection to the proxy
 pub struct Connection {
-    config: Arc<Config>,
+    config: Config,
     inbound_client: Pin<Box<dyn Stream<Item = Result<ControlPacket<Serverbound>, Error>> + Send>>,
     outbound_client: Pin<Box<dyn Sink<ControlPacket<Clientbound>, Error = Error> + Send>>,
     inbound_server: Pin<Box<dyn Stream<Item = Result<ControlPacket<Clientbound>, Error>> + Send>>,
@@ -118,16 +106,15 @@ pub struct Connection {
     rtp_reader: MuxPacketReader<RtpPacketReader, RtcpPacketReader>,
     rtp_writer: MuxPacketWriter<RtpPacketWriter, RtcpPacketWriter>,
 
-    target: Option<u8>,
+    target: Option<u8>, // only if client is talking
     next_ssrc: u32,
     free_ssrcs: Vec<u32>,
     sessions: BTreeMap<SessionId, User>,
 }
 
 impl Connection {
-    /// Create a new connection handler
     pub fn new<CSi, CSt, SSi, SSt>(
-        config: Arc<Config>,
+        config: Config,
         client_sink: CSi,
         client_stream: CSt,
         server_sink: SSi,
@@ -139,20 +126,18 @@ impl Connection {
         SSi: Sink<ControlPacket<Serverbound>, Error = Error> + 'static + Send,
         SSt: Stream<Item = Result<ControlPacket<Clientbound>, Error>> + 'static + Send,
     {
-        let rsa = Rsa::generate(2048).expect("Failed to generate RSA key");
-        let key = PKey::from_rsa(rsa).expect("Failed to create PKey");
+        let rsa = Rsa::generate(2048).unwrap();
+        let key = PKey::from_rsa(rsa).unwrap();
 
-        let mut cert_builder = X509::builder().expect("Failed to create X509 builder");
+        let mut cert_builder = X509::builder().unwrap();
         cert_builder
-            .set_not_after(&Asn1Time::days_from_now(1).expect("Invalid time"))
-            .expect("Failed to set expiry");
+            .set_not_after(&Asn1Time::days_from_now(1).unwrap())
+            .unwrap();
         cert_builder
-            .set_not_before(&Asn1Time::days_from_now(0).expect("Invalid time"))
-            .expect("Failed to set start time");
-        cert_builder.set_pubkey(&key).expect("Failed to set pubkey");
-        cert_builder
-            .sign(&key, MessageDigest::sha256())
-            .expect("Failed to sign certificate");
+            .set_not_before(&Asn1Time::days_from_now(0).unwrap())
+            .unwrap();
+        cert_builder.set_pubkey(&key).unwrap();
+        cert_builder.sign(&key, MessageDigest::sha256()).unwrap();
         let cert = cert_builder.build();
 
         Self {
@@ -177,12 +162,10 @@ impl Connection {
         }
     }
 
-    /// Check if WebRTC is supported for this connection
     fn supports_webrtc(&self) -> bool {
         self.ice.is_some()
     }
 
-    /// Allocate a new SSRC for a user session
     fn allocate_ssrc(&mut self, session_id: SessionId) -> &mut User {
         let ssrc = self.free_ssrcs.pop().unwrap_or_else(|| {
             let ssrc = self.next_ssrc;
@@ -206,45 +189,44 @@ impl Connection {
         self.sessions.get_mut(&session_id).unwrap()
     }
 
-    /// Free SSRC when user disconnects
     fn free_ssrc(&mut self, session_id: SessionId) {
         if let Some(user) = self.sessions.remove(&session_id) {
             self.free_ssrcs.push(user.ssrc)
         }
     }
 
-    /// Initialize ICE agent and send WebRTC details to client
     fn setup_ice(&mut self) -> Result<(), Error> {
-        info!("Setting up ICE agent");
-
         // Setup ICE agent
         let mut agent = ice::Agent::new_rfc5245();
         agent.set_software("mumble-web-proxy");
         agent.set_controlling_mode(true);
 
         // Setup ICE stream
-        let mut stream = {
+        let mut stream = match {
             let mut builder = agent.stream_builder(1);
-            if self.config.ice_port_min != 1 || self.config.ice_port_max != u16::MAX {
-                builder.set_port_range(self.config.ice_port_min, self.config.ice_port_max);
+            if self.config.ice_min_port != 1 || self.config.ice_max_port != u16::max_value() {
+                builder.set_port_range(self.config.ice_min_port, self.config.ice_max_port);
             }
-            builder.build().map_err(|e| Error::Ice(e.to_string()))?
+            builder.build()
+        } {
+            Ok(stream) => stream,
+            Err(err) => {
+                return Err(io::Error::new(io::ErrorKind::Other, err).into());
+            }
         };
         let component = stream.take_components().pop().expect("one component");
 
-        // Calculate DTLS fingerprint
-        let fingerprint = self
-            .dtls_cert
-            .digest(MessageDigest::sha256())
-            .map_err(|e| Error::Protocol(format!("Failed to calculate fingerprint: {}", e)))?
-            .iter()
-            .map(|byte| format!("{:02X}", byte))
-            .collect::<Vec<_>>()
-            .join(":");
-
         // Send WebRTC details to the client
         let mut msg = msgs::WebRTC::new();
-        msg.set_dtls_fingerprint(fingerprint);
+        msg.set_dtls_fingerprint(
+            self.dtls_cert
+                .digest(MessageDigest::sha256())
+                .unwrap()
+                .iter()
+                .map(|byte| format!("{:02X}", byte))
+                .collect::<Vec<_>>()
+                .join(":"),
+        );
         msg.set_ice_pwd(stream.get_local_pwd().to_owned());
         msg.set_ice_ufrag(stream.get_local_ufrag().to_owned());
 
@@ -252,21 +234,16 @@ impl Connection {
         self.ice = Some((agent, stream));
 
         // Prepare to accept the DTLS connection
-        let mut acceptor = SslAcceptor::mozilla_intermediate(SslMethod::dtls())
-            .map_err(|e| Error::Protocol(format!("Failed to create DTLS acceptor: {}", e)))?;
-        acceptor
-            .set_certificate(&self.dtls_cert)
-            .map_err(|e| Error::Protocol(format!("Failed to set certificate: {}", e)))?;
-        acceptor
-            .set_private_key(&self.dtls_key)
-            .map_err(|e| Error::Protocol(format!("Failed to set private key: {}", e)))?;
+        let mut acceptor = SslAcceptor::mozilla_intermediate(SslMethod::dtls()).unwrap();
+        acceptor.set_certificate(&self.dtls_cert).unwrap();
+        acceptor.set_private_key(&self.dtls_key).unwrap();
+        // FIXME: verify remote fingerprint
         self.dtls_srtp_future = Some(DtlsSrtp::handshake(component, acceptor).boxed());
 
         self.outbound_buf.push_back(Frame::Client(msg.into()));
         Ok(())
     }
 
-    /// Gather ICE candidates and send them to the client
     fn gather_ice_candidates(mut self: Pin<&mut Self>, cx: &mut Context) -> bool {
         if self.candidate_gathering_done {
             return false;
@@ -278,14 +255,14 @@ impl Connection {
         pin_mut!(stream);
         match stream.poll_next(cx) {
             Poll::Ready(Some(mut candidate)) => {
-                debug!(candidate = %candidate, "Local ICE candidate");
+                println!("Local ice candidate: {}", candidate.to_string());
 
                 // Map to public addresses (if configured)
                 let config = &self.config;
                 match (
                     &mut candidate.address,
-                    config.ice_ipv4,
-                    config.ice_ipv6,
+                    config.ice_public_v4,
+                    config.ice_public_v6,
                 ) {
                     (webrtc_sdp::address::Address::Ip(IpAddr::V4(addr)), Some(public), _) => {
                         *addr = public;
@@ -293,7 +270,7 @@ impl Connection {
                     (webrtc_sdp::address::Address::Ip(IpAddr::V6(addr)), _, Some(public)) => {
                         *addr = public;
                     }
-                    _ => {}
+                    _ => {} // non configured
                 };
 
                 // Got a new candidate, send it to the client
@@ -305,24 +282,24 @@ impl Connection {
             }
             Poll::Ready(None) => {
                 self.candidate_gathering_done = true;
-                info!("ICE candidate gathering complete");
                 false
             }
             _ => false,
         }
     }
 
-    /// Dispatch queued outbound frames
     fn dispatch_outbound_frames(
         mut self: Pin<&mut Self>,
         cx: &mut Context,
     ) -> Poll<Result<(), Error>> {
+        // Make sure we can send any pending frames before trying to do so
         ready!(self.outbound_server.as_mut().poll_ready(cx)?);
         ready!(self.outbound_client.as_mut().poll_ready(cx)?);
         if let Some(ref mut dtls_srtp) = self.dtls_srtp {
             ready!(Pin::new(dtls_srtp).poll_ready(cx)?);
         }
 
+        // Send out all pending frames
         while let Some(frame) = self.outbound_buf.pop_front() {
             match frame {
                 Frame::Server(frame) => {
@@ -340,11 +317,14 @@ impl Connection {
                         pin_mut!(dtls_srtp);
                         dtls_srtp.as_mut().start_send(&buf)?;
                         ready!(dtls_srtp.poll_ready(cx)?);
+                    } else {
+                        // RTP not yet setup, just drop the frame
                     }
                 }
             }
         }
 
+        // All frames have been sent (or queued), flush any buffers in the output path
         let _ = self.outbound_client.as_mut().poll_flush(cx)?;
         let _ = self.outbound_server.as_mut().poll_flush(cx)?;
         if let Some(ref mut dtls_srtp) = self.dtls_srtp {
@@ -354,7 +334,6 @@ impl Connection {
         Poll::Ready(Ok(()))
     }
 
-    /// Handle incoming voice packet from Mumble server
     fn handle_voice_packet(&mut self, packet: VoicePacket<Clientbound>) -> Result<(), Error> {
         let (target, session_id, seq_num, opus_data, last_bit) = match packet {
             VoicePacket::Audio {
@@ -440,7 +419,6 @@ impl Connection {
         Ok(())
     }
 
-    /// Process packet received from Mumble server
     fn process_packet_from_server(
         &mut self,
         packet: ControlPacket<Clientbound>,
@@ -470,17 +448,19 @@ impl Connection {
         Ok(())
     }
 
-    /// Process packet received from WebSocket client
     fn process_packet_from_client(
         &mut self,
         packet: ControlPacket<Serverbound>,
     ) -> Result<(), Error> {
         match packet {
             ControlPacket::Authenticate(mut message) => {
-                debug!(
-                    webrtc = message.get_webrtc(),
-                    "Received Authenticate message"
-                );
+                println!("MSG Authenticate: {:?}", {
+                    let mut message = message.clone();
+                    if message.get_password() != "" {
+                        message.set_password("{{snip}}".to_string());
+                    }
+                    message
+                });
                 if message.get_webrtc() {
                     message.clear_webrtc();
                     message.set_opus(true);
@@ -494,7 +474,7 @@ impl Connection {
                 }
             }
             ControlPacket::WebRTC(mut message) => {
-                debug!("Received WebRTC message");
+                println!("Got WebRTC: {:?}", message);
                 if let Some((_, stream)) = &mut self.ice {
                     if let (Ok(ufrag), Ok(pwd)) = (
                         CString::new(message.take_ice_ufrag()),
@@ -506,7 +486,7 @@ impl Connection {
             }
             ControlPacket::IceCandidate(mut message) => {
                 let candidate = message.take_content();
-                debug!(candidate = %candidate, "Received ICE candidate");
+                println!("Got ice candidate: {:?}", candidate);
                 if let Some((_, stream)) = &mut self.ice {
                     match format!("candidate:{}", candidate).parse() {
                         Ok(SdpAttribute::Candidate(candidate)) => {
@@ -514,7 +494,11 @@ impl Connection {
                         }
                         Ok(_) => unreachable!(),
                         Err(err) => {
-                            return Err(Error::Ice(format!("Error parsing ICE candidate: {}", err)));
+                            return Err(io::Error::new(
+                                io::ErrorKind::Other,
+                                format!("Error parsing ICE candidate: {}", err),
+                            )
+                            .into());
                         }
                     }
                 }
@@ -533,7 +517,6 @@ impl Connection {
         Ok(())
     }
 
-    /// Process incoming RTP packet from WebRTC client
     fn process_rtp_packet(&mut self, buf: &[u8]) {
         match self.rtp_reader.read_packet(&mut &buf[..]) {
             Ok(MuxedPacket::Rtp(rtp)) => {
@@ -554,9 +537,7 @@ impl Connection {
                 }
             }
             Ok(MuxedPacket::Rtcp(_rtcp)) => {}
-            Err(err) => {
-                warn!(error = %err, "Failed to parse RTP packet");
-            }
+            Err(_err) => {}
         }
     }
 }
@@ -593,7 +574,7 @@ impl Future for Connection {
                 if let Poll::Ready(mut dtls_srtp) = future.poll(cx)? {
                     self.dtls_srtp_future = None;
 
-                    info!("DTLS-SRTP connection established");
+                    println!("DTLS-SRTP connection established.");
 
                     dtls_srtp.add_incoming_unknown_ssrcs(self.next_ssrc as usize);
                     dtls_srtp.add_outgoing_unknown_ssrcs(self.next_ssrc as usize);
@@ -635,7 +616,6 @@ impl Future for Connection {
     }
 }
 
-/// Represents a frame to be sent
 #[derive(Clone)]
 enum Frame {
     Server(ControlPacket<Serverbound>),

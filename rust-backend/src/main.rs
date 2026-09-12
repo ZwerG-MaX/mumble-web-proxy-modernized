@@ -1,294 +1,275 @@
-//! Mumble to WebSocket+WebRTC proxy
-//!
-//! This proxy bridges Mumble's TCP control and UDP voice protocols to WebSocket and WebRTC,
-//! allowing browser-based clients to connect to vanilla Mumble servers.
-
-#![allow(unused_imports, unused_variables)]
-
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use anyhow::{Context, Result};
+use argparse::StoreOption;
+use argparse::StoreTrue;
+use argparse::{ArgumentParser, Store};
 use byteorder::{BigEndian, ByteOrder};
 use bytes::{BufMut, Bytes, BytesMut};
-use clap::Parser;
 use futures::{future, SinkExt, StreamExt, TryFutureExt, TryStreamExt};
 use http::HeaderValue;
-use mumble_protocol::control::{ClientControlCodec, ControlPacket, RawControlPacket};
+use mumble_protocol::control::ClientControlCodec;
+use mumble_protocol::control::ControlPacket;
+use mumble_protocol::control::RawControlPacket;
 use mumble_protocol::Clientbound;
-use tokio::net::{TcpListener, TcpStream};
+use serde::Deserialize;
+use std::convert::Into;
+use std::convert::TryInto;
+use std::io::ErrorKind;
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+use tokio::net::TcpListener;
+use tokio::net::TcpStream;
 use tokio_native_tls::TlsConnector;
 use tokio_tungstenite::accept_hdr_async_with_config;
 use tokio_util::codec::Decoder;
-use tracing::{error, info};
-use tungstenite::handshake::server::{Request, Response};
-use tungstenite::protocol::{Message, WebSocketConfig};
+use tungstenite::handshake::server::{ErrorResponse, Request, Response};
+use tungstenite::protocol::Message;
+use tungstenite::protocol::WebSocketConfig;
 
 mod connection;
 mod error;
-mod rtp;
-
 use connection::Connection;
 use error::Error;
 
-/// Mumble to WebSocket+WebRTC proxy
-#[derive(Parser, Debug, Clone)]
-#[command(name = "mumble-web-proxy", version, about, long_about = None)]
-pub struct CliArgs {
-    /// TOML configuration file
-    #[arg(short, long)]
-    pub config: Option<PathBuf>,
-
-    /// Port to listen for WebSocket connections (non-TLS)
-    #[arg(long, required = true)]
-    pub listen_ws: u16,
-
-    /// Hostname and port of the upstream Mumble server
-    #[arg(long, required = true)]
-    pub server: String,
-
-    /// Accept invalid TLS certificates (DANGEROUS: only for self-signed certs)
-    #[arg(long, default_value = "false")]
-    pub accept_invalid_certificate: bool,
-
-    /// Minimum port for ICE host candidates
-    #[arg(long, default_value = "1")]
-    pub ice_port_min: u16,
-
-    /// Maximum port for ICE host candidates
-    #[arg(long, default_value = "65535")]
-    pub ice_port_max: u16,
-
-    /// Public IPv4 address for ICE host candidates (for NAT traversal)
-    #[arg(long)]
-    pub ice_ipv4: Option<Ipv4Addr>,
-
-    /// Public IPv6 address for ICE host candidates (for NAT traversal)
-    #[arg(long)]
-    pub ice_ipv6: Option<Ipv6Addr>,
-}
-
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct Config {
-    pub listen_ws: u16,
-    pub server: String,
-    pub accept_invalid_certificate: bool,
-    pub ice_port_min: u16,
-    pub ice_port_max: u16,
-    pub ice_ipv4: Option<Ipv4Addr>,
-    pub ice_ipv6: Option<Ipv6Addr>,
+    pub file: Option<String>,
+    #[serde(rename = "listen-ws")]
+    pub ws_port: u16,
+    #[serde(rename = "server")]
+    pub upstream: String,
+    #[serde(rename = "accept-invalid-certificate")]
+    pub accept_invalid_certs: bool,
+    pub ice_min_port: u16,
+    pub ice_max_port: u16,
+    pub ice_public_v4: Option<Ipv4Addr>,
+    pub ice_public_v6: Option<Ipv6Addr>,
 }
 
 impl Default for Config {
-    fn default() -> Self {
-        Self {
-            listen_ws: 0,
-            server: String::new(),
-            accept_invalid_certificate: false,
-            ice_port_min: 1,
-            ice_port_max: u16::MAX,
-            ice_ipv4: None,
-            ice_ipv6: None,
+    fn default() -> Config {
+        Config {
+            file: None,
+            ws_port: 0_u16,
+            upstream: "".to_string(),
+            accept_invalid_certs: false,
+            ice_min_port: 1,
+            ice_max_port: u16::max_value(),
+            ice_public_v4: None,
+            ice_public_v6: None,
         }
     }
 }
 
-impl Config {
-    /// Merge CLI arguments into config (CLI takes precedence)
-    fn merge_with_cli(&mut self, args: &CliArgs) {
-        if args.listen_ws != 0 {
-            self.listen_ws = args.listen_ws;
-        }
-        if !args.server.is_empty() {
-            self.server.clone_from(&args.server);
-        }
-        self.accept_invalid_certificate = args.accept_invalid_certificate;
-        self.ice_port_min = args.ice_port_min;
-        self.ice_port_max = args.ice_port_max;
-        self.ice_ipv4 = args.ice_ipv4;
-        self.ice_ipv6 = args.ice_ipv6;
-    }
+fn create_argparser(config: &mut Config) -> ArgumentParser {
+    let mut ap = ArgumentParser::new();
+    ap.set_description("Run the Mumble-WebRTC proxy");
+    ap.refer(&mut config.file).add_option(
+        &["--config"],
+        StoreOption,
+        "Toml file to read options from",
+    );
+    ap.refer(&mut config.ws_port).add_option(
+        &["--listen-ws"],
+        Store,
+        "Port to listen for WebSocket (non TLS) connections on",
+    );
+    ap.refer(&mut config.upstream).add_option(
+        &["--server"],
+        Store,
+        "Hostname and (optionally) port of the upstream Mumble server",
+    );
+    ap.refer(&mut config.accept_invalid_certs).add_option(
+        &["--accept-invalid-certificate"],
+        StoreTrue,
+        "Connect to upstream server even when its certificate is invalid.
+                 Only ever use this if know that your server is using a self-signed certificate!",
+    );
+    ap.refer(&mut config.ice_min_port).add_option(
+        &["--ice-port-min"],
+        Store,
+        "Minimum port number to use for ICE host candidates.",
+    );
+    ap.refer(&mut config.ice_max_port).add_option(
+        &["--ice-port-max"],
+        Store,
+        "Maximum port number to use for ICE host candidates.",
+    );
+    ap.refer(&mut config.ice_public_v4).add_option(
+        &["--ice-ipv4"],
+        StoreOption,
+        "Set a public IPv4 address to be used for ICE host candidates.",
+    );
+    ap.refer(&mut config.ice_public_v6).add_option(
+        &["--ice-ipv6"],
+        StoreOption,
+        "Set a public IPv6 address to be used for ICE host candidates.",
+    );
+    ap
 }
 
-fn parse_upstream_address(upstream: &str) -> Result<(String, u16)> {
-    if upstream.parse::<Ipv6Addr>().is_ok() {
-        return Ok((upstream.to_string(), 64738));
-    }
-
-    let parts: Vec<&str> = upstream.rsplitn(2, ':').collect();
-    match parts.len() {
-        2 => {
-            let port = parts[0].parse::<u16>().context("Invalid upstream port")?;
-            let host = parts[1].to_string();
-            Ok((host, port))
-        }
-        1 => Ok((parts[0].to_string(), 64738)),
-        _ => anyhow::bail!("Invalid upstream address format"),
-    }
-}
-
-fn init_tracing() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-        )
-        .init();
+fn error_missing_arg(arg: &str) {
+    let args: Vec<String> = std::env::args().collect();
+    let name = if args.len() > 0 {
+        &args[0][..]
+    } else {
+        "unknown"
+    };
+    let mut config = Config::default();
+    let ap = create_argparser(&mut config);
+    ap.error(
+        name,
+        &format!("Option [\"--{}\"] is required", arg),
+        &mut std::io::stderr(),
+    );
+    std::process::exit(2);
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    init_tracing();
+async fn main() -> Result<(), Error> {
+    let mut config = Config::default();
 
-    let args = CliArgs::parse();
+    // First pass to get the config file path
+    create_argparser(&mut config).parse_args_or_exit();
+    if let Some(file) = config.file {
+        // Then read in the config defaults
+        config = toml::from_str(&std::fs::read_to_string(file)?)?;
+        // Second pass to allow for overwrites
+        create_argparser(&mut config).parse_args_or_exit();
+    }
 
-    let mut config = if let Some(config_path) = &args.config {
-        let content = std::fs::read_to_string(config_path)
-            .with_context(|| format!("Failed to read config file: {:?}", config_path))?;
-        toml::from_str(&content).context("Failed to parse config file")?
-    } else {
-        Config::default()
+    if config.ws_port == 0 {
+        error_missing_arg("listen-ws");
+    }
+    if config.upstream == "" {
+        error_missing_arg("server");
+    }
+
+    let Config {
+        ws_port,
+        upstream,
+        accept_invalid_certs,
+        ..
+    } = config.clone();
+
+    // Try parsing as raw IPv6 address first
+    let (upstream_host, upstream_port) = match upstream.parse::<Ipv6Addr>() {
+        Ok(_) => (upstream.as_ref(), 64738),
+        Err(_) => {
+            // Otherwise split off port from end
+            let mut upstream_parts = upstream.rsplitn(2, ':');
+            let right = upstream_parts.next().expect("Empty upstream address");
+            match upstream_parts.next() {
+                Some(host) => (host, right.parse().expect("Failed to parse upstream port")),
+                None => (right, 64738),
+            }
+        }
     };
-
-    config.merge_with_cli(&args);
-
-    if config.listen_ws == 0 {
-        anyhow::bail!("--listen-ws is required");
-    }
-    if config.server.is_empty() {
-        anyhow::bail!("--server is required");
-    }
-
-    let config = Arc::new(config);
-
-    let (upstream_host, upstream_port) = parse_upstream_address(&config.server)?;
-    info!(host = %upstream_host, port = upstream_port, "Resolving upstream address");
-
-    let upstream_addr = (upstream_host.as_str(), upstream_port)
+    let upstream_host = Box::leak(Box::new(upstream_host.to_owned())).as_str();
+    println!("Resolving upstream address {:?}", (upstream_host, upstream_port));
+    let upstream_addr = (upstream_host, upstream_port)
         .to_socket_addrs()
-        .context("Failed to parse upstream address")?
+        .expect("Failed to parse upstream address")
         .next()
-        .context("Failed to resolve upstream address")?;
-    info!(addr = %upstream_addr, "Resolved upstream address");
+        .expect("Failed to resolve upstream address");
+    println!("Resolved upstream address: {}", upstream_addr);
 
-    let socket_addrs = [
-        SocketAddr::from((Ipv6Addr::UNSPECIFIED, config.listen_ws)),
-        SocketAddr::from((Ipv4Addr::UNSPECIFIED, config.listen_ws)),
-    ];
+    println!("Binding to port {}", ws_port);
+    let ipv6_socket_addr = (Ipv6Addr::UNSPECIFIED, ws_port);
+    let ipv4_socket_addr = (Ipv4Addr::UNSPECIFIED, ws_port);
+    let socket_addrs = [SocketAddr::from(ipv6_socket_addr), SocketAddr::from(ipv4_socket_addr)];
 
-    let listener = TcpListener::bind(&socket_addrs[..])
-        .await
-        .with_context(|| format!("Failed to bind to port {}", config.listen_ws))?;
+    let server = TcpListener::bind(&socket_addrs[..]).await?;
 
-    info!(port = config.listen_ws, "WebSocket listener started");
-    info!("Waiting for client connections...");
-
+    println!("Waiting for client connections..");
     loop {
-        let (client_stream, addr) = match listener.accept().await {
-            Ok(conn) => conn,
+        let (client, _) = server.accept().await?;
+        let addr = match client.peer_addr() {
+            Ok(addr) => addr,
             Err(err) => {
-                error!(error = %err, "Failed to accept connection");
+                if err.kind() != ErrorKind::NotConnected {
+                    println!("Error getting address of new connection: {:?}", err);
+                }
                 continue;
             }
         };
+        println!("New connection from {}", addr);
 
-        info!(client = %addr, "New client connection");
-
-        let config = Arc::clone(&config);
-        let upstream_host = upstream_host.clone();
-
-        tokio::spawn(async move {
-            if let Err(err) = handle_client(client_stream, addr, config, upstream_host, upstream_addr).await {
-                if !err.is_connection_closed() {
-                    error!(client = %addr, error = %err, "Connection error");
-                } else {
-                    info!(client = %addr, "Client disconnected");
-                }
-            }
-        });
-    }
-}
-
-async fn handle_client(
-    client_stream: TcpStream,
-    addr: SocketAddr,
-    config: Arc<Config>,
-    upstream_host: String,
-    upstream_addr: SocketAddr,
-) -> Result<(), Error> {
-    let accept_invalid_certs = config.accept_invalid_certificate;
-    
-    let server_future = async move {
-        let stream = TcpStream::connect(&upstream_addr).await?;
-        
-        let connector: TlsConnector = native_tls::TlsConnector::builder()
-            .danger_accept_invalid_certs(accept_invalid_certs)
-            .build()
-            .map_err(|e| Error::Protocol(format!("Failed to build TLS connector: {}", e)))?
-            .into();
-        
-        let tls_stream = connector.connect(&upstream_host, stream).await?;
-        Ok::<_, Error>(ClientControlCodec::new().framed(tls_stream))
-    };
-
-    let ws_config = WebSocketConfig {
-        max_message_size: Some(0x7f_ffff),
-        max_frame_size: Some(0x7f_ffff),
-        accept_unmasked_frames: false,
-        ..Default::default()
-    };
-
-    let client_future = async {
-        let callback = |_req: &Request, mut response: Response| {
-            response.headers_mut().insert(
-                "Sec-WebSocket-Protocol",
-                HeaderValue::from_static("binary"),
-            );
-            Ok(response)
+        // Connect to server
+        let server = async move {
+            let stream = TcpStream::connect(&upstream_addr).await?;
+            let connector: TlsConnector = native_tls::TlsConnector::builder()
+                .danger_accept_invalid_certs(accept_invalid_certs)
+                .build()
+                .unwrap()
+                .into();
+            let stream = connector.connect(upstream_host, stream).await?;
+            Ok::<_, Error>(ClientControlCodec::new().framed(stream))
         };
-        accept_hdr_async_with_config(client_stream, callback, Some(ws_config)).await
-    };
 
-    let (client_ws, server_codec) = future::try_join(client_future, server_future).await?;
+        // Accept client
+        let websocket_config = WebSocketConfig {
+            max_send_queue: Some(10), // can be fairly small as voice is using WebRTC instead
+            max_message_size: Some(0x7f_ffff), // maximum size accepted by Murmur
+            max_frame_size: Some(0x7f_ffff), // maximum size accepted by Murmur
+            accept_unmasked_frames: false, // browsers should comply with RFC 6455
+        };
+        fn header_callback(
+            _req: &Request,
+            mut response: Response,
+        ) -> Result<Response, ErrorResponse> {
+            response
+                .headers_mut()
+                .insert("Sec-WebSocket-Protocol", HeaderValue::from_static("binary"));
+            Ok(response)
+        }
+        let client = accept_hdr_async_with_config(client, header_callback, Some(websocket_config))
+            .err_into();
 
-    let (client_sink, client_stream) = client_ws.split();
-    
-    // Transform WebSocket messages to ControlPackets
-    let client_sink_mapped = client_sink.with(|msg: ControlPacket<Clientbound>| {
-        let raw = RawControlPacket::from(msg);
-        let mut header = BytesMut::with_capacity(6);
-        header.put_u16(raw.id);
-        header.put_u32(raw.bytes.len() as u32);
-        let mut buf = Vec::with_capacity(6 + raw.bytes.len());
-        buf.extend_from_slice(&header);
-        buf.extend_from_slice(&raw.bytes);
-        future::ready(Ok::<_, Error>(Message::Binary(buf)))
-    });
+        // Once both are done, begin proxy duty
+        let config = config.clone();
+        tokio::spawn(async move {
+            let (client, server) = future::try_join(client, server).await?;
+            let (client_sink, client_stream) = client.split();
+            let client_sink = client_sink.with(|m: ControlPacket<Clientbound>| {
+                let m = RawControlPacket::from(m);
+                let mut header = BytesMut::with_capacity(6);
+                header.put_u16(m.id);
+                header.put_u32(m.bytes.len() as u32);
+                let mut buf = Vec::new();
+                buf.extend(header);
+                buf.extend(m.bytes);
+                future::ready(Ok::<_, Error>(Message::Binary(buf)))
+            });
+            let client_stream = client_stream.err_into().try_filter_map(|m| {
+                future::ok(match m {
+                    Message::Binary(b) if b.len() >= 6 => {
+                        let id = BigEndian::read_u16(&b);
+                        // b[2..6] is length which is implicit in websocket msgs
+                        let bytes = Bytes::from(b).slice(6..);
+                        RawControlPacket { id, bytes }.try_into().ok()
+                    }
+                    _ => None,
+                })
+            });
 
-    let client_stream_mapped = client_stream.err_into().try_filter_map(|msg| {
-        future::ok(match msg {
-            Message::Binary(data) if data.len() >= 6 => {
-                let id = BigEndian::read_u16(&data);
-                let bytes = Bytes::from(data).slice(6..);
-                RawControlPacket { id, bytes }.try_into().ok()
+            let (server_sink, server_stream) = server.split();
+            let server_sink = server_sink.sink_err_into();
+            let server_stream = server_stream.err_into();
+
+            Connection::new(
+                config,
+                client_sink,
+                client_stream,
+                server_sink,
+                server_stream,
+            ).await?;
+
+            println!("Client connection closed: {}", addr);
+
+            Ok::<_, Error>(())
+        }.unwrap_or_else(move |err| {
+            if !err.is_connection_closed() {
+                println!("Error on connection {}: {:?}", addr, err);
             }
-            _ => None,
-        })
-    });
-
-    let (server_sink, server_stream) = server_codec.split();
-
-    Connection::new(
-        config,
-        client_sink_mapped,
-        client_stream_mapped,
-        server_sink.err_into(),
-        server_stream.err_into(),
-    )
-    .await?;
-
-    info!(client = %addr, "Connection closed");
-    Ok(())
+        }));
+    }
 }

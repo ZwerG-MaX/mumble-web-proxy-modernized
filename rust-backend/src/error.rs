@@ -1,56 +1,60 @@
-//! Error types for mumble-web-proxy
+use futures::channel::mpsc;
 
-use thiserror::Error;
-
-/// Main error type for the proxy
-#[derive(Error, Debug)]
+#[derive(Debug)]
 pub enum Error {
-    #[error("I/O error: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("TLS error: {0}")]
-    Tls(#[from] native_tls::Error),
-
-    #[error("WebSocket error: {0}")]
-    WebSocket(#[from] tungstenite::Error),
-
-    #[error("RTP error: {0}")]
-    Rtp(#[source] Box<dyn std::error::Error + Send + Sync>),
-
-    #[error("Configuration error: {0}")]
-    Config(#[from] toml::de::Error),
-
-    #[error("ICE error: {0}")]
-    Ice(String),
-
-    #[error("Protocol error: {0}")]
-    Protocol(String),
-
-    #[error("Connection closed")]
-    ConnectionClosed,
+    Io(std::io::Error),
+    ServerTls(native_tls::Error),
+    ClientConnection(tungstenite::Error),
+    Misc(Box<dyn std::error::Error + Send>),
 }
 
 impl Error {
-    /// Check if this error represents a normal connection closure
     pub fn is_connection_closed(&self) -> bool {
-        matches!(
-            self,
-            Error::ConnectionClosed | Error::WebSocket(tungstenite::Error::ConnectionClosed)
-        )
+        match self {
+            Error::ClientConnection(tungstenite::Error::ConnectionClosed) => true,
+            _ => false,
+        }
     }
 }
 
-impl From<crate::rtp::Error> for Error {
-    fn from(err: crate::rtp::Error) -> Self {
-        Error::Rtp(Box::new(err))
+impl From<tungstenite::Error> for Error {
+    fn from(e: tungstenite::Error) -> Self {
+        Error::ClientConnection(e)
     }
 }
 
-impl From<anyhow::Error> for Error {
-    fn from(err: anyhow::Error) -> Self {
-        Error::Protocol(err.to_string())
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Io(e)
     }
 }
 
-/// Result type alias for convenience
-pub type Result<T> = std::result::Result<T, Error>;
+impl From<native_tls::Error> for Error {
+    fn from(e: native_tls::Error) -> Self {
+        Error::ServerTls(e)
+    }
+}
+
+impl From<rtp::Error> for Error {
+    fn from(e: rtp::Error) -> Self {
+        Error::Misc(Box::new(e))
+    }
+}
+
+impl From<toml::de::Error> for Error {
+    fn from(e: toml::de::Error) -> Self {
+        Error::Misc(Box::new(e))
+    }
+}
+
+impl From<()> for Error {
+    fn from(_: ()) -> Self {
+        panic!();
+    }
+}
+
+impl From<mpsc::SendError> for Error {
+    fn from(_: mpsc::SendError) -> Self {
+        panic!();
+    }
+}
