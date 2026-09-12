@@ -13,11 +13,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /build
 
-# Copy workspace files
-COPY Cargo.toml ./
-COPY mumble-protocol ./mumble-protocol
-COPY rtp ./rtp
-COPY proxy ./proxy
+# Copy workspace files from rust-backend
+COPY rust-backend/Cargo.toml ./
+COPY rust-backend/mumble-protocol ./mumble-protocol
+COPY rust-backend/rtp ./rtp
+COPY rust-backend/proxy ./proxy
 
 # Build release binary
 RUN cargo build --release --package mumble-web-proxy

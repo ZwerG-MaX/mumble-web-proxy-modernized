@@ -1,190 +1,163 @@
 # mumble-web-proxy Rust Backend
 
-Полная реализация Mumble to WebSocket+WebRTC proxy на Rust с поддержкой ICE, DTLS-SRTP и RTP.
+Полная реализация Mumble to WebSocket+WebRTC proxy на Rust 1.88+ с использованием workspace.
 
-## 🎯 Возможности
+## 🏗️ Структура workspace
 
-Проект основан на оригинальном коде из репозитория [Johni0702/mumble-web-proxy](https://github.com/Johni0702/mumble-web-proxy) с полной поддержкой:
-
-- **TCP → WebSocket** проксирование управляющего трафика Mumble
-- **UDP → WebRTC** конвертация голосового трафика
-- **ICE** (Interactive Connectivity Establishment) для NAT traversal
-- **DTLS-SRTP** для шифрования голосового трафика
-- **RTP/RTCP** для передачи голоса через WebRTC
-- **Opus** кодек для сжатия аудио
-
-Код максимально приближен к оригиналу для обеспечения совместимости и стабильности.
-
-## 📦 Зависимости
-
-### Системные требования
-
-- **Rust 1.88+** (для совместимости с современными зависимостями)
-- **libnice-dev** — ICE implementation
-- **libssl-dev** — OpenSSL для DTLS-SRTP
-- **clang** — для компиляции C-зависимостей
-- **protobuf-compiler** — для protobuf
-- **pkg-config** — для поиска библиотек
-
-```bash
-# Debian/Ubuntu
-sudo apt-get install rustc-1.88 libnice-dev libssl-dev clang protobuf-compiler pkg-config
-
-# Fedora
-sudo dnf install rust-1.88 libnice-devel openssl-devel clang protobuf-compiler pkgconf-pkg-config
-
-# Arch Linux
-sudo pacman -S rust libnice openssl clang protobuf pkgconf
 ```
-
-### Rust зависимости
-
-- `argparse` — CLI parsing (оригинальная библиотека)
-- `tokio` v1 — async runtime
-- `mumble-protocol` v0.4 — протокол Mumble с WebRTC расширениями
-- `libnice` v0.3 — ICE implementation
-- `rtp` (johni0702/rtp) — RTP/RTCP/DTLS-SRTP
-- `webrtc-sdp` v0.3 — SDP parsing
-- `openssl` v0.10 — криптография
-- `tungstenite` v0.12 — WebSocket
-- `native-tls` — TLS для upstream соединений
+rust-backend/
+├── Cargo.toml              # Workspace configuration
+├── mumble-protocol/        # Mumble protocol implementation
+│   ├── Cargo.toml
+│   ├── build.rs            # Protobuf code generation
+│   ├── proto/
+│   │   └── Mumble.proto    # Protocol buffer definitions
+│   └── src/
+│       ├── lib.rs          # Codec, message types
+│       ├── control.rs      # Control packet wrapper
+│       └── voice.rs        # Voice packet parser
+├── rtp/                    # RTP/RTCP/SRTP implementation
+│   ├── Cargo.toml
+│   └── src/
+│       ├── lib.rs
+│       ├── traits.rs       # ReadPacket/WritePacket traits
+│       ├── rfc3550.rs      # RTP/RTCP (RFC 3550)
+│       ├── rfc5761.rs      # Multiplexing (RFC 5761)
+│       └── rfc5764.rs      # DTLS-SRTP (RFC 5764)
+└── proxy/                  # Main proxy application
+    ├── Cargo.toml
+    └── src/
+        ├── main.rs         # Entry point, WebSocket listener
+        ├── connection.rs   # Connection handler
+        └── error.rs        # Error types
+```
 
 ## 🚀 Сборка
 
+### Из корня репозитория
+
 ```bash
-# Из корня репозитория
+# Перейти в директорию rust-backend
 cd rust-backend
+
+# Собрать все crates
 cargo build --release
 
-# Бинарник будет в target/release/mumble-web-proxy
-```
+# Собрать только proxy
+cargo build --release --package mumble-web-proxy
 
-## 🔧 Использование
-
-```bash
-# Базовый запуск
+# Запустить
 ./target/release/mumble-web-proxy \
   --listen-ws 64737 \
   --server mumble.example.com:64738
-
-# С конфигурационным файлом
-./target/release/mumble-web-proxy --config config.toml
-
-# С указанием публичных IP для NAT traversal
-./target/release/mumble-web-proxy \
-  --listen-ws 64737 \
-  --server mumble.example.com:64738 \
-  --ice-ipv4 1.2.3.4 \
-  --ice-ipv6 2001:db8::1
 ```
 
-### Конфигурационный файл (config.toml)
-
-```toml
-# Порт для WebSocket соединений
-listen-ws = 64737
-
-# Адрес Mumble сервера
-server = "mumble.example.com:64738"
-
-# Принимать невалидные TLS сертификаты (для self-signed)
-accept-invalid-certificate = false
-
-# Диапазон портов для ICE
-ice-port-min = 20000
-ice-port-max = 21000
-
-# Публичные IP адреса (для NAT traversal)
-ice-ipv4 = "1.2.3.4"
-ice-ipv6 = "2001:db8::1"
-```
-
-## 📁 Структура кода
-
-```
-src/
-├── main.rs           # Точка входа, CLI parsing, WebSocket listener
-├── connection.rs     # Обработчик соединений, ICE/DTLS-SRTP/RTP логика
-└── error.rs          # Типы ошибок
-```
-
-### Основные компоненты
-
-#### main.rs
-- Парсинг CLI аргументов через `argparse`
-- Загрузка конфигурации из TOML
-- Создание TCP listener для WebSocket
-- TLS терминация для upstream Mumble сервера (native-tls)
-- Управление жизненным циклом соединений
-- WebSocket handshake через tungstenite
-
-#### connection.rs
-- Управление ICE агентом (libnice) и сбор candidates
-- DTLS-SRTP handshake и шифрование (openssl)
-- Конвертация Mumble voice packets ↔ RTP packets
-- Управление сессиями пользователей и SSRC
-- Обработка таймаутов голосовой активности
-- Маппинг ICE candidates на публичные IP адреса
-
-#### error.rs
-- Ручная реализация типов ошибок
-- Конвертация из std::io::Error, native_tls::Error, tungstenite::Error, rtp::Error
-- Метод is_connection_closed() для определения нормального закрытия соединения
-
-#### Зависимости
-Проект использует оригинальные зависимости из репозитория Johni0702/mumble-web-proxy:
-- `argparse` — CLI parsing
-- `rtp` из johni0702/rtp (rev 6c0223d) — RTP/RTCP/DTLS-SRTP
-- `libnice` v0.3 — ICE для NAT traversal
-- `webrtc-sdp` v0.3 — парсинг SDP
-- `mumble-protocol` v0.4 — протокол Mumble с WebRTC расширениями
-- `tokio` v1 — async runtime
-- `tungstenite` v0.12 — WebSocket
-- `native-tls` — TLS для upstream соединений
-- `openssl` v0.10 — криптография для DTLS
-
-## 🐳 Docker
+### Из директории proxy
 
 ```bash
-# Сборка образа
-podman build -t mumble-web-proxy:latest -f ../Dockerfile .
-
-# Запуск
-podman run -d \
-  --name mumble-web-proxy \
-  -p 64737:64737 \
-  -p 20000-21000:20000-21000/udp \
-  mumble-web-proxy:latest \
-  --listen-ws 64737 \
-  --server mumble.example.com:64738
+cd rust-backend/proxy
+cargo build --release
+./target/release/mumble-web-proxy --help
 ```
 
-## 🔍 Отладка
+## 📦 Crates
+
+### mumble-protocol
+
+Реализация протокола Mumble с использованием Protobuf 3:
+- Codec для TCP control channel
+- Все типы сообщений Mumble
+- WebRTC расширения
+- Voice packet parser/serializer
+
+**Зависимости:**
+- `prost` 0.13 — Protobuf 3 runtime
+- `prost-build` 0.13 — Code generator
+- `tokio-util` 0.7 — Codec traits
+- `bytes` 1.9 — Byte buffer
+
+### rtp
+
+Собственная реализация RTP/RTCP/SRTP:
+- RFC 3550 (RTP/RTCP)
+- RFC 5761 (Multiplexing)
+- RFC 5764 (DTLS-SRTP)
+
+**Зависимости:**
+- `bytes` 1.9
+- `byteorder` 1.5
+- `openssl` 0.10
+
+### proxy
+
+Основное приложение прокси:
+- WebSocket listener
+- TLS терминация
+- ICE/WebRTC интеграция
+- Connection handler
+
+**Зависимости:**
+- `tokio` 1.42
+- `tokio-tungstenite` 0.24
+- `tokio-rustls` 0.26
+- `libnice` 0.4
+- `clap` 4.5
+
+## 🔧 Системные требования
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install \
+  rustc-1.88 \
+  libnice-dev \
+  libssl-dev \
+  clang \
+  protobuf-compiler \
+  pkg-config
+
+# Fedora
+sudo dnf install \
+  rust-1.88 \
+  libnice-devel \
+  openssl-devel \
+  clang \
+  protobuf-compiler \
+  pkgconf-pkg-config
+```
+
+## 🐛 Отладка
 
 ```bash
 # Включить debug логи
-RUST_LOG=debug ./target/release/mumble-web-proxy ...
+RUST_LOG=debug cargo run --release -- \
+  --listen-ws 64737 \
+  --server mumble:64738
 
 # Трассировка ICE candidates
-RUST_LOG=mumble_web_proxy::connection=debug ./target/release/mumble-web-proxy ...
+RUST_LOG=mumble_web_proxy::connection=debug cargo run --release
 
 # Полная трассировка
-RUST_LOG=trace ./target/release/mumble-web-proxy ...
+RUST_LOG=trace cargo run --release
 ```
 
-## 📊 Производительность
+## 📊 Тестирование
 
-- Минимальные накладные расходы на проксирование (<1ms)
-- Асинхронная обработка через Tokio
-- Эффективное использование памяти
-- Поддержка 100+ одновременных соединений
+```bash
+# Запустить тесты для всех crates
+cargo test --workspace
+
+# Запустить тесты для конкретного crate
+cargo test --package mumble-protocol
+cargo test --package rtp
+cargo test --package mumble-web-proxy
+```
 
 ## 🔗 Ссылки
 
 - [Оригинальный проект](https://github.com/Johni0702/mumble-web-proxy)
-- [mumble-protocol](https://crates.io/crates/mumble-protocol)
-- [libnice](https://crates.io/crates/libnice)
-- [rtp (johni0702)](https://github.com/johni0702/rtp)
+- [Mumble Wiki](https://wiki.mumble.info)
+- [RFC 3550 - RTP](https://tools.ietf.org/html/rfc3550)
+- [RFC 5764 - DTLS-SRTP](https://tools.ietf.org/html/rfc5764)
 
 ## 📄 Лицензия
 

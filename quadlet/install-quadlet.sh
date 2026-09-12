@@ -34,6 +34,11 @@ if ! podman image exists "${IMAGE_NAME}"; then
         exit 1
     fi
     
+    if [ ! -f "$REPO_ROOT/rust-backend/Cargo.toml" ]; then
+        echo "❌ Error: rust-backend/Cargo.toml not found"
+        exit 1
+    fi
+    
     podman build -t "${IMAGE_NAME}" -f "$REPO_ROOT/Dockerfile" "$REPO_ROOT"
     echo "✅ Image built successfully"
 else
