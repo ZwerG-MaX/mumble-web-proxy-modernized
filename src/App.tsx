@@ -4,6 +4,7 @@ import ChangesOverview from './components/ChangesOverview'
 import FileExplorer from './components/FileExplorer'
 import GitGuide from './components/GitGuide'
 import PodmanGuide from './components/PodmanGuide'
+import ModernizationStatus from './components/ModernizationStatus'
 
 const files = {
   'Cargo.toml': {
@@ -960,7 +961,7 @@ enum Frame {
   }
 }
 
-type ViewMode = 'code' | 'guide' | 'podman'
+type ViewMode = 'code' | 'guide' | 'podman' | 'status'
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<keyof typeof files>('Cargo.toml')
@@ -984,7 +985,7 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2">
               {/* Page toggle */}
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-gray-900 border border-gray-800 mr-2">
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-gray-900 border border-gray-800 mr-2 flex-wrap">
                 <button
                   onClick={() => setPage('code')}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
@@ -994,7 +995,7 @@ export default function App() {
                   }`}
                 >
                   <i className="fas fa-code mr-1.5"></i>
-                  Код
+                  <span className="hidden sm:inline">Код</span>
                 </button>
                 <button
                   onClick={() => setPage('guide')}
@@ -1005,7 +1006,7 @@ export default function App() {
                   }`}
                 >
                   <i className="fab fa-github mr-1.5"></i>
-                  GitHub
+                  <span className="hidden sm:inline">GitHub</span>
                 </button>
                 <button
                   onClick={() => setPage('podman')}
@@ -1016,7 +1017,18 @@ export default function App() {
                   }`}
                 >
                   <i className="fas fa-cube mr-1.5"></i>
-                  Podman
+                  <span className="hidden sm:inline">Podman</span>
+                </button>
+                <button
+                  onClick={() => setPage('status')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    page === 'status'
+                      ? 'bg-amber-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <i className="fas fa-info-circle mr-1.5"></i>
+                  <span className="hidden sm:inline">Статус</span>
                 </button>
               </div>
               <a
@@ -1094,8 +1106,10 @@ export default function App() {
           </>
         ) : page === 'guide' ? (
           <GitGuide />
-        ) : (
+        ) : page === 'podman' ? (
           <PodmanGuide />
+        ) : (
+          <ModernizationStatus />
         )}
       </div>
 

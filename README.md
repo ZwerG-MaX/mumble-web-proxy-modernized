@@ -1,6 +1,16 @@
-# 🚀 mumble-web-proxy — Modernized Code Review
+# 🚀 mumble-web-proxy — Code Review & Deployment Guide
 
-Интерактивный веб-сайт с обновлённым кодом mumble-web-proxy и пошаговой инструкцией по загрузке в GitHub.
+Интерактивный веб-сайт с анализом кода mumble-web-proxy, инструкциями по развёртыванию и информацией о статусе модернизации.
+
+## ⚠️ Важная информация о модернизации
+
+**Текущий статус:** Полная переделка кода на современный Rust (2024-2026) **не завершена** из-за критических проблем совместимости.
+
+**Причина:** Оригинальные репозитории Johni0702 используют устаревшие зависимости (protobuf 2, tokio-util 0.6, trackable 0.1, rust-crypto 0.2), которые несовместимы с современным Rust 1.88+ и edition 2021/2024.
+
+**Рекомендуемое решение:** Используйте оригинальный репозиторий с Rust 1.75 или Docker.
+
+📖 [Подробная информация о статусе модернизации](MODERNIZATION_STATUS.md)
 
 ## 📋 Что внутри
 
@@ -62,7 +72,48 @@
 
 ## 🚀 Быстрый старт
 
-### Локальный запуск
+### Запуск mumble-web-proxy (рекомендуемый способ)
+
+**Используйте оригинальный репозиторий с Rust 1.75:**
+
+```bash
+# Клонировать оригинальный репозиторий
+git clone https://github.com/Johni0702/mumble-web-proxy.git
+cd mumble-web-proxy
+
+# Использовать Rust 1.75
+rustup default 1.75.0
+
+# Собрать
+cargo build --release
+
+# Запустить
+./target/release/mumble-web-proxy \
+  --listen-ws 64737 \
+  --server mumble.example.com:64738
+```
+
+**Или используйте Docker:**
+
+```bash
+# Клонировать оригинальный репозиторий
+git clone https://github.com/Johni0702/mumble-web-proxy.git
+cd mumble-web-proxy
+
+# Собрать Docker образ
+docker build -t mumble-web-proxy:latest .
+
+# Запустить
+docker run -d \
+  --name mumble-web-proxy \
+  -p 64737:64737 \
+  -p 20000-21000:20000-21000/udp \
+  mumble-web-proxy:latest \
+  --listen-ws 64737 \
+  --server mumble.example.com:64738
+```
+
+### Локальный запуск веб-интерфейса
 
 ```bash
 # Установка зависимостей
