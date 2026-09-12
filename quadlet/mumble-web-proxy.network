@@ -1,0 +1,28 @@
+# mumble-web-proxy.network
+# Quadlet configuration for isolated network
+# Place this file in ~/.config/containers/systemd/
+# Optional - remove Network= from .container if not needed
+
+[Network]
+# Subnet configuration
+Subnet=10.89.0.0/24
+Gateway=10.89.0.1
+
+# DNS servers
+DNS=8.8.8.8
+DNS=8.8.4.4
+
+# Labels
+Label=app=mumble-web-proxy
+Label=environment=production
+
+# Internal network (no internet access)
+# Uncomment to isolate from internet:
+# Internal=true
+
+# IPv6 support (optional)
+# IPv6=true
+# SubnetV6=fd00:dead:beef::/64
+
+[Install]
+WantedBy=default.target

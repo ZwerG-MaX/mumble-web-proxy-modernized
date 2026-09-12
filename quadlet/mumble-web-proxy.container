@@ -1,0 +1,59 @@
+# mumble-web-proxy.container
+# Quadlet configuration for Mumble-WebRTC proxy
+# Place this file in ~/.config/containers/systemd/
+
+[Unit]
+Description=Mumble to WebSocket+WebRTC Proxy
+Documentation=https://github.com/ZwerG-MaX/mumble-web-proxy
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+# Container image (build locally or use registry)
+Image=docker.io/zwergmax/mumble-web-proxy:latest
+# For local build: Image=localhost/mumble-web-proxy:latest
+
+# Container name
+ContainerName=mumble-web-proxy
+
+# Port mappings
+# WebSocket control channel
+PublishPort=64737:64737
+# ICE/WebRTC voice channels (UDP)
+PublishPort=20000-21000:20000-21000/udp
+
+# Volume mounts
+# Configuration (read-only)
+Volume=mumble-web-proxy-config:/etc/mumble-web-proxy:ro
+# Logs (optional)
+Volume=mumble-web-proxy-logs:/var/log/mumble-web-proxy
+
+# Environment variables
+Environment=RUST_LOG=info
+
+# Startup command
+Exec=/usr/local/bin/mumble-web-proxy --config /etc/mumble-web-proxy/config.toml
+
+# Resource limits
+MemoryLimit=256m
+CPUQuota=50%
+
+# Security settings
+ReadOnly=true
+SecurityLabelType=container_runtime_t
+NoNewPrivileges=true
+
+# Network (optional - remove if using default network)
+Network=mumble-web-proxy-network.network
+
+# Auto-update from registry
+AutoUpdate=registry
+
+# Health check (optional)
+# HealthCmd=/usr/local/bin/mumble-web-proxy --health-check
+# HealthInterval=30s
+# HealthTimeout=10s
+# HealthRetries=3
+
+[Install]
+WantedBy=default.target

@@ -3,6 +3,7 @@ import CodeViewer from './components/CodeViewer'
 import ChangesOverview from './components/ChangesOverview'
 import FileExplorer from './components/FileExplorer'
 import GitGuide from './components/GitGuide'
+import PodmanGuide from './components/PodmanGuide'
 
 const files = {
   'Cargo.toml': {
@@ -959,7 +960,7 @@ enum Frame {
   }
 }
 
-type ViewMode = 'code' | 'guide'
+type ViewMode = 'code' | 'guide' | 'podman'
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<keyof typeof files>('Cargo.toml')
@@ -1003,8 +1004,19 @@ export default function App() {
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <i className="fas fa-book mr-1.5"></i>
-                  Инструкция
+                  <i className="fab fa-github mr-1.5"></i>
+                  GitHub
+                </button>
+                <button
+                  onClick={() => setPage('podman')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    page === 'podman'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <i className="fas fa-cube mr-1.5"></i>
+                  Podman
                 </button>
               </div>
               <a
@@ -1080,8 +1092,10 @@ export default function App() {
               viewMode={viewMode}
             />
           </>
-        ) : (
+        ) : page === 'guide' ? (
           <GitGuide />
+        ) : (
+          <PodmanGuide />
         )}
       </div>
 
