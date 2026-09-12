@@ -22,13 +22,28 @@
 - ✅ Без устаревших зависимостей (trackable, handy_async, rust-crypto)
 - ✅ Использование bytes, byteorder, openssl
 
-**3. mumble-web-proxy** (основной проект)
+**3. libnice-sys** (обновлённые FFI bindings)
+- ✅ bindgen 0.70 (вместо 0.56)
+- ✅ glib-sys 0.20 (вместо 0.10)
+- ✅ gobject-sys 0.20 (вместо 0.10)
+- ✅ gio-sys 0.20 (вместо 0.10)
+- ✅ Edition 2021
+- ✅ allowlist_* вместо устаревших whitelist_*
+
+**4. libnice** (обновлённые high-level bindings)
+- ✅ glib 0.20 (вместо 0.10)
+- ✅ webrtc-sdp 0.4 (вместо 0.3)
+- ✅ Edition 2021
+- ✅ Современный glib::wrapper! макрос
+- ✅ Полная поддержка ICE agent API
+
+**5. mumble-web-proxy** (основной проект)
 - ✅ Rust 1.88+ с edition 2021
 - ✅ tokio 1.42 (async runtime)
 - ✅ tokio-util 0.7 (codec)
 - ✅ tokio-tungstenite 0.24 (WebSocket)
 - ✅ tokio-rustls 0.26 (TLS)
-- ✅ libnice 0.4 (ICE)
+- ✅ libnice 0.4 (ICE, локальная версия)
 - ✅ webrtc-sdp 0.4 (SDP parsing)
 - ✅ clap 4.5 (CLI parsing)
 - ✅ tracing (structured logging)
@@ -39,6 +54,17 @@
 ```
 rust-backend/
 ├── Cargo.toml              # Workspace configuration
+├── libnice-sys/            # FFI bindings to libnice (обновлены)
+│   ├── Cargo.toml
+│   ├── build.rs            # bindgen code generation
+│   └── src/
+│       └── lib.rs          # FFI bindings
+├── libnice/                # High-level libnice bindings (обновлены)
+│   ├── Cargo.toml
+│   └── src/
+│       ├── lib.rs          # Module exports
+│       ├── ffi.rs          # Safe FFI wrapper
+│       └── ice.rs          # ICE agent implementation
 ├── mumble-protocol/        # Mumble protocol implementation
 │   ├── Cargo.toml
 │   ├── build.rs            # Protobuf code generation

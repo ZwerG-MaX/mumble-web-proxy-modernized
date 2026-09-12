@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
+    "libnice-sys",
+    "libnice",
     "mumble-protocol",
     "rtp",
     "proxy",
@@ -39,7 +41,6 @@ tungstenite = "0.24"
 http = "1.2"
 
 # WebRTC & ICE
-libnice = "0.4"
 webrtc-sdp = "0.4"
 
 # Cryptography
