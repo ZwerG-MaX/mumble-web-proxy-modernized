@@ -9,7 +9,7 @@ pub enum Error {
     Io(#[from] std::io::Error),
 
     #[error("TLS error: {0}")]
-    Tls(#[from] rustls::Error),
+    Tls(#[from] native_tls::Error),
 
     #[error("WebSocket error: {0}")]
     WebSocket(#[from] tungstenite::Error),

@@ -37,7 +37,6 @@
 |-----------|------|-------|
 | **Rust Edition** | 2018 | 2021 |
 | **CLI Parsing** | argparse | clap v4 (derive) |
-| **TLS Library** | native-tls | rustls |
 | **Error Handling** | Ручные From impl | thiserror + anyhow |
 | **Logging** | println! | tracing |
 | **WebSocket** | tungstenite 0.12 | tungstenite 0.21 |
@@ -45,6 +44,20 @@
 | **Config** | toml 0.5 | toml 0.8 |
 | **Code Quality** | unwrap() повсюду | proper error handling |
 | **Memory Safety** | Box::leak | Arc<String> |
+
+### ✅ Полная поддержка WebRTC
+
+Текущая версия содержит **полную реализацию** прокси с поддержкой:
+- **ICE** (Interactive Connectivity Establishment) для NAT traversal
+- **DTLS-SRTP** для шифрования голосового трафика
+- **RTP/RTCP** для передачи голоса через WebRTC
+- **Opus** кодек для сжатия аудио
+
+Используются следующие зависимости:
+- `libnice` — реализация ICE
+- `rtp` (из johni0702/rtp) — RTP/RTCP/DTLS-SRTP
+- `webrtc-sdp` — парсинг SDP для WebRTC
+- `openssl` — криптография для DTLS
 
 ## 🚀 Быстрый старт
 
@@ -128,12 +141,45 @@ systemctl --user status mumble-web-proxy.service
 journalctl --user -u mumble-web-proxy.service -f
 ```
 
+#### Проверка работы:
+
+```bash
+# Проверить, что контейнер запущен
+podman ps | grep mumble-web-proxy
+
+# Проверить логи
+journalctl --user -u mumble-web-proxy.service -f
+
+# Проверить, что порт слушается
+ss -tlnp | grep 64737
+```
+
 ## 🛠️ Технологии
 
+### Веб-сайт (React)
 - **React 18** + **TypeScript**
 - **Vite** — быстрый сборщик
 - **Tailwind CSS** — стилизация
 - **Font Awesome** — иконки
+
+### Backend (Rust)
+- **Rust 2021** — современная редакция
+- **Tokio** — async runtime
+- **clap v4** — CLI parsing
+- **mumble-protocol** — протокол Mumble
+- **tungstenite** — WebSocket
+- **native-tls** — TLS для upstream соединений
+- **libnice** — ICE для NAT traversal
+- **rtp** (johni0702/rtp) — RTP/RTCP/DTLS-SRTP
+- **webrtc-sdp** — SDP parsing для WebRTC
+- **openssl** — криптография для DTLS
+- **tracing** — структурированное логирование
+- **thiserror + anyhow** — обработка ошибок
+
+### Контейнеризация
+- **Podman** — контейнерный runtime
+- **Quadlet** — интеграция с systemd
+- **Multi-stage Dockerfile** — оптимизированная сборка
 
 ## 📁 Структура проекта
 

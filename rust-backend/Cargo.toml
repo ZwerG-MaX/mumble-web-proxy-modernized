@@ -15,7 +15,7 @@ clap = { version = "4.4", features = ["derive"] }
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec"] }
-futures = "0.3"
+futures = { version = "0.3", features = ["compat", "io-compat"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -24,20 +24,19 @@ toml = "0.8"
 # Networking & protocols
 bytes = "1.5"
 byteorder = "1.5"
-mumble-protocol = { version = "0.5", features = ["webrtc-extensions"] }
+mumble-protocol = { version = "0.4", features = ["webrtc-extensions"] }
 tokio-tungstenite = "0.21"
 tungstenite = "0.21"
 http = "1.0"
 
 # TLS
-tokio-rustls = "0.25"
-rustls = "0.22"
-rustls-pemfile = "2.0"
+tokio-native-tls = "0.3"
+native-tls = "0.2"
 
 # WebRTC & ICE
-libnice = "0.4"
-webrtc-sdp = "0.4"
-rtp = { git = "https://github.com/webrtc-rs/rtp", tag = "v0.12.0" }
+libnice = "0.3"
+webrtc-sdp = "0.3"
+rtp = { git = "https://github.com/johni0702/rtp", rev = "6c0223d", features = ["rfc5764-openssl"] }
 
 # Cryptography
 openssl = "0.10"

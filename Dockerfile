@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     clang \
     protobuf-compiler \
     pkg-config \
+    cmake \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
