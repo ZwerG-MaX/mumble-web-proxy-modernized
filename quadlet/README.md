@@ -78,8 +78,10 @@ nano ~/.local/share/containers/storage/volumes/mumble-web-proxy-config/_data/con
 - `ice-ipv4` / `ice-ipv6` — публичные IP для NAT traversal
 
 Параметры Quadlet (.container файл):
-- `Memory=256m` — ограничение памяти (НЕ MemoryLimit!)
-- `CPUs=0.5` — ограничение CPU (НЕ CPUQuota!)
+- `PodmanArgs=--memory=256m` — ограничение памяти
+- `PodmanArgs=--cpus=0.5` — ограничение CPU (0.5 = 50% одного ядра)
+- `PodmanArgs=--memory-swap=512m` — ограничение swap
+- `PidsLimit=200` — ограничение количества процессов (если поддерживается)
 
 ## 🔒 Безопасность
 

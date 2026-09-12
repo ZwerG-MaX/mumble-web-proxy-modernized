@@ -34,9 +34,10 @@ Environment=RUST_LOG=info
 # Startup command
 Exec=/usr/local/bin/mumble-web-proxy --config /etc/mumble-web-proxy/config.toml
 
-# Resource limits
-Memory=256m
-CPUs=0.5
+# Resource limits (via PodmanArgs for compatibility)
+PodmanArgs=--memory=256m
+PodmanArgs=--cpus=0.5
+PodmanArgs=--memory-swap=512m
 
 # Security settings
 ReadOnly=true
