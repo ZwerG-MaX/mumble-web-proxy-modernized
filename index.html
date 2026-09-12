@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mumble-web-proxy — Modernized Code Review (Rust 2021)</title>
+    <meta name="description" content="Mumble to WebSocket+WebRTC proxy. Connect to Mumble servers directly from your browser." />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        min-height: 100%;
+      }
+      html.dark, html.dark body {
+        background-color: #030712;
+        color: #f3f4f6;
+      }
+      html.light, html.light body {
+        background-color: #ffffff;
+        color: #111827;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
