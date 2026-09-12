@@ -97,8 +97,21 @@ nano ~/.local/share/containers/storage/volumes/mumble-web-proxy-config/_data/con
 Контейнер запускается с усиленными настройками безопасности:
 - Read-only файловая система
 - NoNewPrivileges
-- Ограничения по памяти и CPU
+- Ограничения по памяти и CPU (через PodmanArgs)
 - Изолированная сеть (опционально)
+- Non-root пользователь внутри контейнера
+
+## 🎤 Полная поддержка WebRTC
+
+Контейнер включает полную реализацию mumble-web-proxy с поддержкой:
+- **ICE** для NAT traversal
+- **DTLS-SRTP** для шифрования голоса
+- **RTP/RTCP** для передачи аудио
+- **Opus** кодек
+
+Необходимые порты:
+- `64737/tcp` — WebSocket control channel
+- `20000-21000/udp` — ICE/WebRTC voice channels
 
 ## 🐛 Отладка
 

@@ -225,7 +225,7 @@ async fn handle_client(
         let connector: TlsConnector = native_tls::TlsConnector::builder()
             .danger_accept_invalid_certs(accept_invalid_certs)
             .build()
-            .unwrap()
+            .map_err(|e| Error::Protocol(format!("Failed to build TLS connector: {}", e)))?
             .into();
         
         let tls_stream = connector.connect(&upstream_host, stream).await?;

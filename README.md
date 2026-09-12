@@ -45,11 +45,19 @@
 | **Code Quality** | unwrap() повсюду | proper error handling |
 | **Memory Safety** | Box::leak | Arc<String> |
 
-### ⚠️ Примечание о WebRTC
+### ✅ Полная поддержка WebRTC
 
-Текущая версия содержит **упрощённую реализацию** прокси, которая фокусируется на базовой функциональности TCP WebSocket проксирования. Полная поддержка WebRTC/ICE/DTLS-SRTP требует дополнительных зависимостей (libnice, rtp, webrtc-sdp, openssl) и более сложной реализации.
+Текущая версия содержит **полную реализацию** прокси с поддержкой:
+- **ICE** (Interactive Connectivity Establishment) для NAT traversal
+- **DTLS-SRTP** для шифрования голосового трафика
+- **RTP/RTCP** для передачи голоса через WebRTC
+- **Opus** кодек для сжатия аудио
 
-Для production-использования с полной поддержкой WebRTC рекомендуется использовать оригинальный код из репозитория Johni0702/mumble-web-proxy или расширить текущую версию.
+Используются следующие зависимости:
+- `libnice` — реализация ICE
+- `rtp` (из johni0702/rtp) — RTP/RTCP/DTLS-SRTP
+- `webrtc-sdp` — парсинг SDP для WebRTC
+- `openssl` — криптография для DTLS
 
 ## 🚀 Быстрый старт
 
@@ -161,6 +169,10 @@ ss -tlnp | grep 64737
 - **mumble-protocol** — протокол Mumble
 - **tungstenite** — WebSocket
 - **native-tls** — TLS для upstream соединений
+- **libnice** — ICE для NAT traversal
+- **rtp** (johni0702/rtp) — RTP/RTCP/DTLS-SRTP
+- **webrtc-sdp** — SDP parsing для WebRTC
+- **openssl** — криптография для DTLS
 - **tracing** — структурированное логирование
 - **thiserror + anyhow** — обработка ошибок
 
