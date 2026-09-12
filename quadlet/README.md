@@ -77,6 +77,10 @@ nano ~/.local/share/containers/storage/volumes/mumble-web-proxy-config/_data/con
 - `ice-port-min` / `ice-port-max` — диапазон портов для WebRTC
 - `ice-ipv4` / `ice-ipv6` — публичные IP для NAT traversal
 
+Параметры Quadlet (.container файл):
+- `Memory=256m` — ограничение памяти (НЕ MemoryLimit!)
+- `CPUs=0.5` — ограничение CPU (НЕ CPUQuota!)
+
 ## 🔒 Безопасность
 
 Контейнер запускается с усиленными настройками безопасности:

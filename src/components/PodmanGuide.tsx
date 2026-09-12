@@ -223,8 +223,8 @@ Environment=RUST_LOG=info
 Exec=/usr/local/bin/mumble-web-proxy --config /etc/mumble-web-proxy/config.toml
 
 # Ресурсы
-MemoryLimit=256m
-CPUQuota=50%
+Memory=256m
+CPUs=0.5
 
 # Безопасность
 ReadOnly=true
@@ -249,7 +249,8 @@ WantedBy=default.target`} />
           <li>• <code className="text-blue-400">PublishPort</code> — маппинг портов (хост:контейнер)</li>
           <li>• <code className="text-blue-400">Volume</code> — монтирование volumes (имя:путь:режим)</li>
           <li>• <code className="text-blue-400">Environment</code> — переменные окружения</li>
-          <li>• <code className="text-blue-400">MemoryLimit</code> — ограничение памяти</li>
+          <li>• <code className="text-blue-400">Memory</code> — ограничение памяти (например, 256m)</li>
+          <li>• <code className="text-blue-400">CPUs</code> — ограничение CPU (например, 0.5 = 50%)</li>
           <li>• <code className="text-blue-400">ReadOnly</code> — read-only файловая система</li>
           <li>• <code className="text-blue-400">NoNewPrivileges</code> — запрет повышения привилегий</li>
         </ul>
@@ -404,7 +405,7 @@ ExecStart=/usr/bin/podman run \\
     --publish 20000-21000:20000-21000/udp \\
     --volume mumble-web-proxy-config:/etc/mumble-web-proxy:ro \\
     --memory=256m \\
-    --cpu-quota=50 \\
+    --cpus=0.5 \\
     --read-only \\
     --security-opt=label=type:container_runtime_t \\
     --no-new-privileges \\
