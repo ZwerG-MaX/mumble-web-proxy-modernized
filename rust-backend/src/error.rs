@@ -1,5 +1,7 @@
 //! Error types for mumble-web-proxy
 
+#![allow(unused_imports)]
+
 use thiserror::Error;
 
 /// Main error type for the proxy
@@ -9,19 +11,13 @@ pub enum Error {
     Io(#[from] std::io::Error),
 
     #[error("TLS error: {0}")]
-    Tls(#[from] rustls::Error),
+    Tls(#[from] native_tls::Error),
 
     #[error("WebSocket error: {0}")]
     WebSocket(#[from] tungstenite::Error),
 
-    #[error("RTP error: {0}")]
-    Rtp(#[source] Box<dyn std::error::Error + Send + Sync>),
-
     #[error("Configuration error: {0}")]
     Config(#[from] toml::de::Error),
-
-    #[error("ICE error: {0}")]
-    Ice(String),
 
     #[error("Protocol error: {0}")]
     Protocol(String),
@@ -37,12 +33,6 @@ impl Error {
             self,
             Error::ConnectionClosed | Error::WebSocket(tungstenite::Error::ConnectionClosed)
         )
-    }
-}
-
-impl From<rtp::Error> for Error {
-    fn from(err: rtp::Error) -> Self {
-        Error::Rtp(Box::new(err))
     }
 }
 

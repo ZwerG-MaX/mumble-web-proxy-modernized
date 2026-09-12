@@ -37,7 +37,6 @@
 |-----------|------|-------|
 | **Rust Edition** | 2018 | 2021 |
 | **CLI Parsing** | argparse | clap v4 (derive) |
-| **TLS Library** | native-tls | rustls |
 | **Error Handling** | Ручные From impl | thiserror + anyhow |
 | **Logging** | println! | tracing |
 | **WebSocket** | tungstenite 0.12 | tungstenite 0.21 |
@@ -45,6 +44,12 @@
 | **Config** | toml 0.5 | toml 0.8 |
 | **Code Quality** | unwrap() повсюду | proper error handling |
 | **Memory Safety** | Box::leak | Arc<String> |
+
+### ⚠️ Примечание о WebRTC
+
+Текущая версия содержит **упрощённую реализацию** прокси, которая фокусируется на базовой функциональности TCP WebSocket проксирования. Полная поддержка WebRTC/ICE/DTLS-SRTP требует дополнительных зависимостей (libnice, rtp, webrtc-sdp, openssl) и более сложной реализации.
+
+Для production-использования с полной поддержкой WebRTC рекомендуется использовать оригинальный код из репозитория Johni0702/mumble-web-proxy или расширить текущую версию.
 
 ## 🚀 Быстрый старт
 
@@ -128,12 +133,41 @@ systemctl --user status mumble-web-proxy.service
 journalctl --user -u mumble-web-proxy.service -f
 ```
 
+#### Проверка работы:
+
+```bash
+# Проверить, что контейнер запущен
+podman ps | grep mumble-web-proxy
+
+# Проверить логи
+journalctl --user -u mumble-web-proxy.service -f
+
+# Проверить, что порт слушается
+ss -tlnp | grep 64737
+```
+
 ## 🛠️ Технологии
 
+### Веб-сайт (React)
 - **React 18** + **TypeScript**
 - **Vite** — быстрый сборщик
 - **Tailwind CSS** — стилизация
 - **Font Awesome** — иконки
+
+### Backend (Rust)
+- **Rust 2021** — современная редакция
+- **Tokio** — async runtime
+- **clap v4** — CLI parsing
+- **mumble-protocol** — протокол Mumble
+- **tungstenite** — WebSocket
+- **native-tls** — TLS для upstream соединений
+- **tracing** — структурированное логирование
+- **thiserror + anyhow** — обработка ошибок
+
+### Контейнеризация
+- **Podman** — контейнерный runtime
+- **Quadlet** — интеграция с systemd
+- **Multi-stage Dockerfile** — оптимизированная сборка
 
 ## 📁 Структура проекта
 

@@ -4,10 +4,7 @@ FROM rust:1.75-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
-    libnice-dev \
     libssl-dev \
-    clang \
-    protobuf-compiler \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
@@ -25,7 +22,6 @@ FROM debian:bookworm-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
-    libnice0 \
     libssl3 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/* \

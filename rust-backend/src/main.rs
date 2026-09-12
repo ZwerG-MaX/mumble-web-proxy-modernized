@@ -3,6 +3,8 @@
 //! This proxy bridges Mumble's TCP control and UDP voice protocols to WebSocket and WebRTC,
 //! allowing browser-based clients to connect to vanilla Mumble servers.
 
+#![allow(unused_imports, unused_variables)]
+
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -16,7 +18,7 @@ use http::HeaderValue;
 use mumble_protocol::control::{ClientControlCodec, ControlPacket, RawControlPacket};
 use mumble_protocol::Clientbound;
 use tokio::net::{TcpListener, TcpStream};
-use tokio_rustls::TlsConnector;
+use tokio_native_tls::TlsConnector;
 use tokio_tungstenite::accept_hdr_async_with_config;
 use tokio_util::codec::Decoder;
 use tracing::{error, info};
@@ -215,18 +217,18 @@ async fn handle_client(
     upstream_host: String,
     upstream_addr: SocketAddr,
 ) -> Result<(), Error> {
+    let accept_invalid_certs = config.accept_invalid_certificate;
+    
     let server_future = async move {
         let stream = TcpStream::connect(&upstream_addr).await?;
         
-        let tls_config = rustls::ClientConfig::builder()
-            .with_root_certificates(rustls::RootCertStore::empty())
-            .with_no_client_auth();
+        let connector: TlsConnector = native_tls::TlsConnector::builder()
+            .danger_accept_invalid_certs(accept_invalid_certs)
+            .build()
+            .unwrap()
+            .into();
         
-        let connector = TlsConnector::from(Arc::new(tls_config));
-        let domain = rustls::pki_types::ServerName::try_from(upstream_host.clone())
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
-        
-        let tls_stream = connector.connect(domain, stream).await?;
+        let tls_stream = connector.connect(&upstream_host, stream).await?;
         Ok::<_, Error>(ClientControlCodec::new().framed(tls_stream))
     };
 
@@ -253,7 +255,8 @@ async fn handle_client(
 
     let (client_sink, client_stream) = client_ws.split();
     
-    let client_sink = client_sink.with(|msg: ControlPacket<Clientbound>| {
+    // Transform WebSocket messages to ControlPackets
+    let client_sink_mapped = client_sink.with(|msg: ControlPacket<Clientbound>| {
         let raw = RawControlPacket::from(msg);
         let mut header = BytesMut::with_capacity(6);
         header.put_u16(raw.id);
@@ -264,7 +267,7 @@ async fn handle_client(
         future::ready(Ok::<_, Error>(Message::Binary(buf)))
     });
 
-    let client_stream = client_stream.err_into().try_filter_map(|msg| {
+    let client_stream_mapped = client_stream.err_into().try_filter_map(|msg| {
         future::ok(match msg {
             Message::Binary(data) if data.len() >= 6 => {
                 let id = BigEndian::read_u16(&data);
@@ -279,8 +282,8 @@ async fn handle_client(
 
     Connection::new(
         config,
-        client_sink,
-        client_stream,
+        client_sink_mapped,
+        client_stream_mapped,
         server_sink.err_into(),
         server_stream.err_into(),
     )
