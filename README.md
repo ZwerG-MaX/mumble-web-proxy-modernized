@@ -138,28 +138,34 @@ journalctl --user -u mumble-web-proxy.service -f
 ## 📁 Структура проекта
 
 ```
-src/
-├── App.tsx                      # Главный компонент с навигацией
-├── main.tsx                     # Точка входа
-├── index.css                    # Глобальные стили
-└── components/
-    ├── CodeViewer.tsx           # Просмотр кода с split view
-    ├── ChangesOverview.tsx      # Карточки с изменениями
-    ├── FileExplorer.tsx         # Переключатель файлов
-    ├── GitGuide.tsx             # Пошаговая инструкция по GitHub
-    └── PodmanGuide.tsx          # Инструкция по Podman Quadlet
-
-public/
-└── (статические файлы)
-```
-
-### Quadlet файлы для Podman
-
-```
-~/.config/containers/systemd/
-├── mumble-web-proxy.container   # Конфигурация контейнера
-├── mumble-web-proxy.volume      # Persistent volume
-└── mumble-web-proxy.network     # Изолированная сеть (опционально)
+.
+├── src/                         # React веб-сайт
+│   ├── App.tsx                  # Главный компонент с навигацией
+│   ├── main.tsx                 # Точка входа
+│   ├── index.css                # Глобальные стили
+│   └── components/
+│       ├── CodeViewer.tsx       # Просмотр кода с split view
+│       ├── ChangesOverview.tsx  # Карточки с изменениями
+│       ├── FileExplorer.tsx     # Переключатель файлов
+│       ├── GitGuide.tsx         # Пошаговая инструкция по GitHub
+│       └── PodmanGuide.tsx      # Инструкция по Podman Quadlet
+│
+├── rust-backend/                # Rust код mumble-web-proxy
+│   ├── Cargo.toml               # Зависимости Rust
+│   └── src/
+│       ├── main.rs              # Точка входа
+│       ├── connection.rs        # Обработчик соединений
+│       └── error.rs             # Типы ошибок
+│
+├── quadlet/                     # Конфигурация Podman Quadlet
+│   ├── mumble-web-proxy.container
+│   ├── mumble-web-proxy.volume
+│   ├── mumble-web-proxy.network
+│   └── install-quadlet.sh
+│
+├── Dockerfile                   # Multi-stage сборка контейнера
+├── build-image.sh               # Скрипт сборки образа
+└── README.md                    # Документация
 ```
 
 ## 🎨 Возможности UI

@@ -13,12 +13,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /build
 
-# Copy dependency files first for better caching
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+# Copy Rust backend source
+COPY rust-backend/Cargo.toml ./
+COPY rust-backend/src ./src
 
 # Build release binary
-RUN cargo build --release --locked
+RUN cargo build --release
 
 # Runtime stage
 FROM debian:bookworm-slim

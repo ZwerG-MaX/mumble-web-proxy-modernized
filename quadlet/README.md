@@ -13,14 +13,16 @@
 
 ```bash
 # 1. Собрать образ контейнера (из корня репозитория)
+cd ..
 chmod +x build-image.sh
 ./build-image.sh
 
 # 2. Сделать скрипт установки исполняемым
-chmod +x quadlet/install-quadlet.sh
+cd quadlet
+chmod +x install-quadlet.sh
 
 # 3. Запустить установку
-./quadlet/install-quadlet.sh
+./install-quadlet.sh
 
 # 4. Отредактировать конфигурацию
 nano ~/.local/share/containers/storage/volumes/mumble-web-proxy-config/_data/config.toml
