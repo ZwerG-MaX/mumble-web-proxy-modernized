@@ -5,8 +5,8 @@
 use byteorder::{BigEndian, ByteOrder, ReadBytesExt, WriteBytesExt};
 use std::io::Cursor;
 
-use crate::traits::{ReadPacket, WritePacket};
-use crate::Error;
+use super::traits::{ReadPacket, WritePacket};
+use super::Error;
 
 /// RTP fixed header (first 12 bytes of RTP packet)
 #[derive(Debug, Clone, PartialEq)]

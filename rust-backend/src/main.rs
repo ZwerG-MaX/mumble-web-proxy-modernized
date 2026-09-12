@@ -234,7 +234,6 @@ async fn handle_client(
     };
 
     let ws_config = WebSocketConfig {
-        max_send_queue: Some(10),
         max_message_size: Some(0x7f_ffff),
         max_frame_size: Some(0x7f_ffff),
         accept_unmasked_frames: false,
