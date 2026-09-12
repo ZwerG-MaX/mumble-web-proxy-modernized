@@ -1,0 +1,18 @@
+# mumble-web-proxy.volume
+# Quadlet configuration for persistent volume
+# Place this file in ~/.config/containers/systemd/
+
+[Volume]
+# Volume driver (local is default)
+Driver=local
+
+# Labels for organization
+Label=app=mumble-web-proxy
+Label=component=config
+Label=managed-by=quadlet
+
+# Optional: specify device and type for local driver
+# Options=device=tmpfs,type=tmpfs
+
+[Install]
+WantedBy=default.target

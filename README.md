@@ -11,7 +11,7 @@
 - **Поиск** — поиск по коду с подсветкой
 - **Копирование** — кнопка для быстрого копирования кода
 
-### 2️⃣ Вкладка "Инструкция"
+### 2️⃣ Вкладка "GitHub"
 Пошаговое руководство из 8 шагов:
 1. Подготовка окружения (git, Rust, SSH)
 2. Клонирование репозитория
@@ -21,6 +21,15 @@
 6. Коммит и пуш
 7. Создание Pull Request
 8. Настройка GitHub Actions (опционально)
+
+### 3️⃣ Вкладка "Podman"
+Полное руководство по запуску через Podman Quadlet + systemd:
+- **Обзор** — что такое Quadlet и его преимущества
+- **Container** — файл .container с конфигурацией контейнера
+- **Volume** — файл .volume для persistent storage
+- **Network** — файл .network для изолированной сети
+- **Systemd Service** — как выглядит сгенерированный service
+- **Команды** — все команды для управления сервисом
 
 ## 🎯 Основные изменения в коде
 
@@ -57,7 +66,7 @@ npm run preview
 
 ### Как залить код в GitHub
 
-1. **Откройте сайт** и переключитесь на вкладку **"Инструкция"**
+1. **Откройте сайт** и переключитесь на вкладку **"GitHub"**
 2. **Следуйте 8 шагам** — каждый шаг содержит команды и объяснения
 3. **Используйте кнопку "Copy"** для копирования кода из вкладки "Код"
 4. **Замените файлы** в вашем репозитории на обновлённые версии
@@ -86,6 +95,34 @@ git commit -m "Modernize: Rust 2021 + latest deps"
 git push origin modernize/rust-2021
 ```
 
+### Как запустить через Podman Quadlet
+
+1. **Откройте сайт** и переключитесь на вкладку **"Podman"**
+2. **Скопируйте файлы** `.container`, `.volume`, `.network`
+3. **Поместите их** в `~/.config/containers/systemd/`
+4. **Перезагрузите systemd** и запустите сервис
+
+#### Краткая версия:
+
+```bash
+# Создать директорию
+mkdir -p ~/.config/containers/systemd
+
+# Скопировать файлы Quadlet
+cp mumble-web-proxy.{container,volume,network} ~/.config/containers/systemd/
+
+# Перезагрузить и запустить
+systemctl --user daemon-reload
+systemctl --user start mumble-web-proxy.service
+systemctl --user enable mumble-web-proxy.service
+
+# Проверить статус
+systemctl --user status mumble-web-proxy.service
+
+# Смотреть логи
+journalctl --user -u mumble-web-proxy.service -f
+```
+
 ## 🛠️ Технологии
 
 - **React 18** + **TypeScript**
@@ -104,10 +141,20 @@ src/
     ├── CodeViewer.tsx           # Просмотр кода с split view
     ├── ChangesOverview.tsx      # Карточки с изменениями
     ├── FileExplorer.tsx         # Переключатель файлов
-    └── GitGuide.tsx             # Пошаговая инструкция
+    ├── GitGuide.tsx             # Пошаговая инструкция по GitHub
+    └── PodmanGuide.tsx          # Инструкция по Podman Quadlet
 
 public/
 └── (статические файлы)
+```
+
+### Quadlet файлы для Podman
+
+```
+~/.config/containers/systemd/
+├── mumble-web-proxy.container   # Конфигурация контейнера
+├── mumble-web-proxy.volume      # Persistent volume
+└── mumble-web-proxy.network     # Изолированная сеть (опционально)
 ```
 
 ## 🎨 Возможности UI
@@ -119,6 +166,8 @@ public/
 - ✅ **Копирование в буфер** — одной кнопкой
 - ✅ **Прогресс-бар** — отслеживание шагов в инструкции
 - ✅ **Быстрая шпаргалка** — команды для быстрого доступа
+- ✅ **Podman Quadlet** — полная инструкция по запуску через systemd
+- ✅ **Три вкладки** — Код / GitHub / Podman
 
 ## 📝 Лицензия
 
