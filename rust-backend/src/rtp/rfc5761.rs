@@ -2,10 +2,10 @@
 //!
 //! This module implements multiplexing of RTP and RTCP packets on a single transport.
 
-use crate::rfc3550::{RtcpCompoundPacket, RtcpPacket, RtcpPacketReader, RtpPacket, RtpPacketReader};
-use crate::rfc3550::{RtcpPacketWriter, RtpPacketWriter};
-use crate::traits::{ReadPacket, WritePacket};
-use crate::Error;
+use super::rfc3550::{RtcpCompoundPacket, RtcpPacket, RtcpPacketReader, RtpPacket, RtpPacketReader};
+use super::rfc3550::{RtcpPacketWriter, RtpPacketWriter};
+use super::traits::{ReadPacket, WritePacket};
+use super::Error;
 
 /// Muxed packet - either RTP or RTCP
 #[derive(Debug, Clone, PartialEq)]
