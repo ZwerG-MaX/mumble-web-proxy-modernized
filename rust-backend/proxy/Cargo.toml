@@ -28,7 +28,7 @@ tokio-tungstenite.workspace = true
 tungstenite.workspace = true
 http.workspace = true
 
-libnice.workspace = true
+libnice = { path = "../libnice" }
 webrtc-sdp.workspace = true
 
 openssl.workspace = true
