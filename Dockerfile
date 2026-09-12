@@ -13,17 +13,14 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /build
 
-# Copy Rust backend source
-COPY rust-backend/Cargo.toml ./
-COPY rust-backend/src ./src
-
-# Fix dependency versions to avoid edition2024 requirements
-RUN cargo update -p clap_lex --precise 0.7.0 || true && \
-    cargo update -p idna_adapter --precise 1.1.0 || true && \
-    cargo update -p webrtc-sdp --precise 0.3.13 || true
+# Copy workspace files
+COPY Cargo.toml ./
+COPY mumble-protocol ./mumble-protocol
+COPY rtp ./rtp
+COPY proxy ./proxy
 
 # Build release binary
-RUN cargo build --release
+RUN cargo build --release --package mumble-web-proxy
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -51,9 +48,7 @@ RUN chmod +x /usr/local/bin/mumble-web-proxy
 USER mumble
 
 # Expose ports
-# WebSocket control channel
 EXPOSE 64737
-# ICE/WebRTC voice channels (UDP)
 EXPOSE 20000-21000/udp
 
 # Health check

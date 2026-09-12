@@ -1,0 +1,21 @@
+[package]
+name = "mumble-protocol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Modern Rust implementation of the Mumble protocol"
+license.workspace = true
+
+[features]
+default = []
+webrtc-extensions = []
+
+[dependencies]
+bytes.workspace = true
+byteorder.workspace = true
+tokio-util.workspace = true
+prost.workspace = true
+thiserror.workspace = true
+
+[build-dependencies]
+prost-build = "0.13"
