@@ -1,0 +1,57 @@
+[package]
+name = "mumble-web-proxy"
+version = "0.2.0"
+authors = ["Jonas Herzig <me@johni0702.de>"]
+edition = "2021"
+rust-version = "1.70"
+description = "Mumble to WebSocket+WebRTC proxy"
+license = "AGPL-3.0"
+repository = "https://github.com/ZwerG-MaX/mumble-web-proxy"
+
+[dependencies]
+# CLI parsing
+clap = { version = "4.4", features = ["derive"] }
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+futures = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+
+# Networking & protocols
+bytes = "1.5"
+byteorder = "1.5"
+mumble-protocol = { version = "0.5", features = ["webrtc-extensions"] }
+tokio-tungstenite = "0.21"
+tungstenite = "0.21"
+http = "1.0"
+
+# TLS
+tokio-rustls = "0.25"
+rustls = "0.22"
+rustls-pemfile = "2.0"
+
+# WebRTC & ICE
+libnice = "0.4"
+webrtc-sdp = "0.4"
+rtp = { git = "https://github.com/webrtc-rs/rtp", tag = "v0.12.0" }
+
+# Cryptography
+openssl = "0.10"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = 3

@@ -25,7 +25,12 @@ if ! podman image exists "${IMAGE_NAME}"; then
     
     if [ ! -f "$REPO_ROOT/Dockerfile" ]; then
         echo "❌ Error: Dockerfile not found at $REPO_ROOT/Dockerfile"
-        echo "Please run this script from the repository root or ensure Dockerfile exists"
+        echo "Please ensure you're running this script from the quadlet/ directory"
+        exit 1
+    fi
+    
+    if [ ! -d "$REPO_ROOT/rust-backend" ]; then
+        echo "❌ Error: rust-backend directory not found at $REPO_ROOT/rust-backend"
         exit 1
     fi
     
@@ -33,7 +38,7 @@ if ! podman image exists "${IMAGE_NAME}"; then
     echo "✅ Image built successfully"
 else
     echo "ℹ️  Image ${IMAGE_NAME} already exists"
-    echo "   To rebuild: podman build -t ${IMAGE_NAME} -f Dockerfile ."
+    echo "   To rebuild: cd $(dirname "$SCRIPT_DIR") && podman build -t ${IMAGE_NAME} -f Dockerfile ."
 fi
 
 # Check Podman version (Quadlet requires 4.4+)
