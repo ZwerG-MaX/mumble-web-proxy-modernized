@@ -163,7 +163,7 @@ ss -tlnp | grep 64737
 - **Font Awesome** — иконки
 
 ### Backend (Rust)
-- **Rust 1.85** — современная версия с edition 2024
+- **Rust 1.88** — современная версия с edition 2024
 - **Tokio** — async runtime
 - **clap v4** — CLI parsing
 - **mumble-protocol** — протокол Mumble
