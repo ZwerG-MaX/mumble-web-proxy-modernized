@@ -1,0 +1,45 @@
+[package]
+name = "mumble-web-proxy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Mumble to WebSocket+WebRTC proxy"
+license.workspace = true
+
+[[bin]]
+name = "mumble-web-proxy"
+path = "src/main.rs"
+
+[dependencies]
+mumble-protocol = { path = "../mumble-protocol", features = ["webrtc-extensions"] }
+rtp = { path = "../rtp" }
+
+tokio.workspace = true
+tokio-util.workspace = true
+futures.workspace = true
+
+bytes.workspace = true
+byteorder.workspace = true
+
+tokio-rustls.workspace = true
+rustls.workspace = true
+
+tokio-tungstenite.workspace = true
+tungstenite.workspace = true
+http.workspace = true
+
+libnice.workspace = true
+webrtc-sdp.workspace = true
+
+openssl.workspace = true
+
+thiserror.workspace = true
+anyhow.workspace = true
+
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+clap.workspace = true
+
+serde.workspace = true
+toml.workspace = true

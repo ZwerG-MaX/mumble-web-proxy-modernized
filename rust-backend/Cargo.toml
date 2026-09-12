@@ -1,33 +1,57 @@
-[package]
-name = "mumble-web-proxy"
-version = "0.2.0"
-authors = ["Jonas Herzig <me@johni0702.de>"]
-edition = "2021"
-description = "Mumble to WebSocket+WebRTC proxy"
-license = "AGPL-3.0"
-repository = "https://github.com/ZwerG-MaX/mumble-web-proxy"
+[workspace]
+resolver = "2"
+members = [
+    "mumble-protocol",
+    "rtp",
+    "proxy",
+]
 
-[dependencies]
-argparse = "0.2.2"
-bytes = "1"
-byteorder = "1.2"
-futures = { version = "0.3", features = ["compat", "io-compat"] }
-toml = "0.5"
+[workspace.package]
+version = "0.5.0"
+edition = "2021"
+rust-version = "1.88"
+authors = ["Modernized mumble-web-proxy"]
+license = "AGPL-3.0"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.42", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec", "net"] }
+futures = "0.3"
+
+# Serialization
+prost = "0.13"
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1", features = ["full"] }
-tokio-util = { version = "0.6", features = ["codec"] }
-tokio-native-tls = "0.3"
-native-tls = "0.2"
-mumble-protocol = { version = "0.4", features = ["webrtc-extensions"] }
-tokio-tungstenite = "0.13"
-http = "0.2"
-tungstenite = "0.12"
-rtp = { git = "https://github.com/johni0702/rtp", rev = "6c0223d", features = ["rfc5764-openssl"] }
-libnice = "0.3"
-webrtc-sdp = "0.3"
+toml = "0.8"
+
+# Networking
+bytes = "1.9"
+byteorder = "1.5"
+
+# TLS
+tokio-rustls = "0.26"
+rustls = "0.23"
+rustls-pemfile = "2.2"
+
+# WebSocket
+tokio-tungstenite = "0.24"
+tungstenite = "0.24"
+http = "1.2"
+
+# WebRTC & ICE
+libnice = "0.4"
+webrtc-sdp = "0.4"
+
+# Cryptography
 openssl = "0.10"
 
-[profile.release]
-lto = true
-codegen-units = 1
-strip = true
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }

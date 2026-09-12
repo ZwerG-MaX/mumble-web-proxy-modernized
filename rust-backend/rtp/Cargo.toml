@@ -1,0 +1,13 @@
+[package]
+name = "rtp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Modern Rust implementation of RTP/RTCP/SRTP protocols"
+license.workspace = true
+
+[dependencies]
+bytes.workspace = true
+byteorder.workspace = true
+openssl.workspace = true
+thiserror.workspace = true
