@@ -15,15 +15,22 @@
 
 ### Системные требования
 
+- **Rust 1.88+** (для совместимости с современными зависимостями)
+- **libnice-dev** — ICE implementation
+- **libssl-dev** — OpenSSL для DTLS-SRTP
+- **clang** — для компиляции C-зависимостей
+- **protobuf-compiler** — для protobuf
+- **pkg-config** — для поиска библиотек
+
 ```bash
 # Debian/Ubuntu
-sudo apt-get install libnice-dev libssl-dev clang protobuf-compiler pkg-config
+sudo apt-get install rustc-1.88 libnice-dev libssl-dev clang protobuf-compiler pkg-config
 
 # Fedora
-sudo dnf install libnice-devel openssl-devel clang protobuf-compiler pkgconf-pkg-config
+sudo dnf install rust-1.88 libnice-devel openssl-devel clang protobuf-compiler pkgconf-pkg-config
 
 # Arch Linux
-sudo pacman -S libnice openssl clang protobuf pkgconf
+sudo pacman -S rust libnice openssl clang protobuf pkgconf
 ```
 
 ### Rust зависимости
