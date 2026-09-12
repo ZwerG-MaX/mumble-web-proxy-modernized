@@ -35,8 +35,8 @@ Environment=RUST_LOG=info
 Exec=/usr/local/bin/mumble-web-proxy --config /etc/mumble-web-proxy/config.toml
 
 # Resource limits
-MemoryLimit=256m
-CPUQuota=50%
+Memory=256m
+CPUs=0.5
 
 # Security settings
 ReadOnly=true
