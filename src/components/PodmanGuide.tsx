@@ -169,7 +169,27 @@ function OverviewTab() {
           <li>• Podman 4.4 или новее (для Quadlet)</li>
           <li>• systemd (обычно предустановлен в Linux)</li>
           <li>• Права пользователя в группе podman (опционально для rootless)</li>
+          <li>• Rust 1.70+ и зависимости для сборки (для сборки образа)</li>
         </ul>
+      </div>
+
+      <div className="p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+        <h4 className="font-semibold text-green-400 mb-2 flex items-center gap-2">
+          <i className="fas fa-hammer"></i>
+          Шаг 1: Сборка образа
+        </h4>
+        <p className="text-sm text-gray-300 mb-3">
+          Перед использованием Quadlet нужно собрать образ контейнера локально:
+        </p>
+        <CodeBlock code={`# Из корня репозитория
+chmod +x build-image.sh
+./build-image.sh
+
+# Или вручную:
+podman build -t mumble-web-proxy:latest -f Dockerfile .
+
+# Проверить, что образ создан:
+podman images | grep mumble-web-proxy`} />
       </div>
     </div>
   )
@@ -196,10 +216,8 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
-# Образ контейнера (замените на ваш образ или соберите локально)
-Image=docker.io/zwergmax/mumble-web-proxy:latest
-# Или для локальной сборки:
-# Image=localhost/mumble-web-proxy:latest
+# Образ контейнера (собрать локально через ./build-image.sh)
+Image=localhost/mumble-web-proxy:latest
 
 # Имя контейнера
 ContainerName=mumble-web-proxy

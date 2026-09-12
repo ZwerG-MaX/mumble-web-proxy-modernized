@@ -12,16 +12,20 @@
 ## 🚀 Быстрая установка
 
 ```bash
-# Сделать скрипт исполняемым
-chmod +x install-quadlet.sh
+# 1. Собрать образ контейнера (из корня репозитория)
+chmod +x build-image.sh
+./build-image.sh
 
-# Запустить установку
-./install-quadlet.sh
+# 2. Сделать скрипт установки исполняемым
+chmod +x quadlet/install-quadlet.sh
 
-# Отредактировать конфигурацию
+# 3. Запустить установку
+./quadlet/install-quadlet.sh
+
+# 4. Отредактировать конфигурацию
 nano ~/.local/share/containers/storage/volumes/mumble-web-proxy-config/_data/config.toml
 
-# Запустить сервис
+# 5. Запустить сервис
 systemctl --user start mumble-web-proxy.service
 systemctl --user enable mumble-web-proxy.service
 ```
@@ -29,18 +33,21 @@ systemctl --user enable mumble-web-proxy.service
 ## 📋 Ручная установка
 
 ```bash
-# Создать директорию для Quadlet
+# 1. Собрать образ контейнера (из корня репозитория)
+podman build -t mumble-web-proxy:latest -f Dockerfile .
+
+# 2. Создать директорию для Quadlet
 mkdir -p ~/.config/containers/systemd
 
-# Скопировать файлы
-cp mumble-web-proxy.container ~/.config/containers/systemd/
-cp mumble-web-proxy.volume ~/.config/containers/systemd/
-cp mumble-web-proxy.network ~/.config/containers/systemd/
+# 3. Скопировать файлы
+cp quadlet/mumble-web-proxy.container ~/.config/containers/systemd/
+cp quadlet/mumble-web-proxy.volume ~/.config/containers/systemd/
+cp quadlet/mumble-web-proxy.network ~/.config/containers/systemd/
 
-# Перезагрузить systemd
+# 4. Перезагрузить systemd
 systemctl --user daemon-reload
 
-# Запустить
+# 5. Запустить
 systemctl --user start mumble-web-proxy.service
 ```
 

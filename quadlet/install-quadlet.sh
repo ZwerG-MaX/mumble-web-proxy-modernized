@@ -16,6 +16,26 @@ if ! command -v podman &> /dev/null; then
     exit 1
 fi
 
+# Check if image exists, build if not
+IMAGE_NAME="mumble-web-proxy:latest"
+if ! podman image exists "${IMAGE_NAME}"; then
+    echo "🔨 Building container image..."
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+    
+    if [ ! -f "$REPO_ROOT/Dockerfile" ]; then
+        echo "❌ Error: Dockerfile not found at $REPO_ROOT/Dockerfile"
+        echo "Please run this script from the repository root or ensure Dockerfile exists"
+        exit 1
+    fi
+    
+    podman build -t "${IMAGE_NAME}" -f "$REPO_ROOT/Dockerfile" "$REPO_ROOT"
+    echo "✅ Image built successfully"
+else
+    echo "ℹ️  Image ${IMAGE_NAME} already exists"
+    echo "   To rebuild: podman build -t ${IMAGE_NAME} -f Dockerfile ."
+fi
+
 # Check Podman version (Quadlet requires 4.4+)
 PODMAN_VERSION=$(podman version --format '{{.Client.Version}}' | cut -d. -f1,2)
 REQUIRED_VERSION="4.4"

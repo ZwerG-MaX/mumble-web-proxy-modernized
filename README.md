@@ -97,26 +97,31 @@ git push origin modernize/rust-2021
 
 ### Как запустить через Podman Quadlet
 
-1. **Откройте сайт** и переключитесь на вкладку **"Podman"**
-2. **Скопируйте файлы** `.container`, `.volume`, `.network`
-3. **Поместите их** в `~/.config/containers/systemd/`
-4. **Перезагрузите systemd** и запустите сервис
+1. **Соберите образ** контейнера локально
+2. **Откройте сайт** и переключитесь на вкладку **"Podman"**
+3. **Скопируйте файлы** `.container`, `.volume`, `.network`
+4. **Поместите их** в `~/.config/containers/systemd/`
+5. **Перезагрузите systemd** и запустите сервис
 
 #### Краткая версия:
 
 ```bash
-# Создать директорию
+# 1. Собрать образ контейнера
+chmod +x build-image.sh
+./build-image.sh
+
+# 2. Создать директорию для Quadlet
 mkdir -p ~/.config/containers/systemd
 
-# Скопировать файлы Quadlet
-cp mumble-web-proxy.{container,volume,network} ~/.config/containers/systemd/
+# 3. Скопировать файлы Quadlet
+cp quadlet/mumble-web-proxy.{container,volume,network} ~/.config/containers/systemd/
 
-# Перезагрузить и запустить
+# 4. Перезагрузить и запустить
 systemctl --user daemon-reload
 systemctl --user start mumble-web-proxy.service
 systemctl --user enable mumble-web-proxy.service
 
-# Проверить статус
+# 5. Проверить статус
 systemctl --user status mumble-web-proxy.service
 
 # Смотреть логи
