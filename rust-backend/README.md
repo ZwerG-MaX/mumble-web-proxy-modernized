@@ -4,12 +4,16 @@
 
 ## 🎯 Возможности
 
+Проект основан на оригинальном коде из репозитория [Johni0702/mumble-web-proxy](https://github.com/Johni0702/mumble-web-proxy) с полной поддержкой:
+
 - **TCP → WebSocket** проксирование управляющего трафика Mumble
 - **UDP → WebRTC** конвертация голосового трафика
 - **ICE** (Interactive Connectivity Establishment) для NAT traversal
 - **DTLS-SRTP** для шифрования голосового трафика
 - **RTP/RTCP** для передачи голоса через WebRTC
 - **Opus** кодек для сжатия аудио
+
+Код максимально приближен к оригиналу для обеспечения совместимости и стабильности.
 
 ## 📦 Зависимости
 
@@ -35,15 +39,15 @@ sudo pacman -S rust libnice openssl clang protobuf pkgconf
 
 ### Rust зависимости
 
-- `clap` v4.4 — CLI parsing с derive макросами
-- `tokio` v1.35 — async runtime
-- `mumble-protocol` v0.4 — протокол Mumble
+- `argparse` — CLI parsing (оригинальная библиотека)
+- `tokio` v1 — async runtime
+- `mumble-protocol` v0.4 — протокол Mumble с WebRTC расширениями
 - `libnice` v0.3 — ICE implementation
-- `rtp` (собственная реализация) — RTP/RTCP/DTLS-SRTP
+- `rtp` (johni0702/rtp) — RTP/RTCP/DTLS-SRTP
 - `webrtc-sdp` v0.3 — SDP parsing
 - `openssl` v0.10 — криптография
-- `tracing` — структурированное логирование
-- `thiserror` + `anyhow` — обработка ошибок
+- `tungstenite` v0.12 — WebSocket
+- `native-tls` — TLS для upstream соединений
 
 ## 🚀 Сборка
 
@@ -101,55 +105,43 @@ ice-ipv6 = "2001:db8::1"
 src/
 ├── main.rs           # Точка входа, CLI parsing, WebSocket listener
 ├── connection.rs     # Обработчик соединений, ICE/DTLS-SRTP/RTP логика
-├── error.rs          # Типы ошибок
-└── rtp/              # Собственная реализация RTP
-    ├── mod.rs        # Модуль RTP
-    ├── rfc3550.rs    # RTP/RTCP пакеты (RFC 3550)
-    ├── rfc5761.rs    # RTP/RTCP multiplexing (RFC 5761)
-    ├── rfc5764.rs    # DTLS-SRTP (RFC 5764)
-    └── traits.rs     # Трейты для чтения/записи пакетов
+└── error.rs          # Типы ошибок
 ```
 
 ### Основные компоненты
 
 #### main.rs
-- Парсинг CLI аргументов через `clap`
+- Парсинг CLI аргументов через `argparse`
 - Загрузка конфигурации из TOML
 - Создание TCP listener для WebSocket
-- TLS терминация для upstream Mumble сервера
+- TLS терминация для upstream Mumble сервера (native-tls)
 - Управление жизненным циклом соединений
+- WebSocket handshake через tungstenite
 
 #### connection.rs
-- Управление ICE агентом и сбор candidates
-- DTLS-SRTP handshake и шифрование
+- Управление ICE агентом (libnice) и сбор candidates
+- DTLS-SRTP handshake и шифрование (openssl)
 - Конвертация Mumble voice packets ↔ RTP packets
 - Управление сессиями пользователей и SSRC
 - Обработка таймаутов голосовой активности
+- Маппинг ICE candidates на публичные IP адреса
 
 #### error.rs
-- Типизированные ошибки через `thiserror`
-- Конвертация из различных типов ошибок
-- Методы для определения типа ошибки
+- Ручная реализация типов ошибок
+- Конвертация из std::io::Error, native_tls::Error, tungstenite::Error, rtp::Error
+- Метод is_connection_closed() для определения нормального закрытия соединения
 
-#### rtp/
-Собственная реализация RTP протокола, преобразованная из оригинального репозитория johni0702/rtp для работы с современным Rust:
-
-- **rfc3550.rs** — Полная реализация RTP и RTCP пакетов согласно RFC 3550
-  - RtpPacket, RtpFixedHeader, RtpExtension
-  - RtcpPacket (SR, RR, SDES, BYE, APP)
-  - RtpPacketReader/Writer, RtcpPacketReader/Writer
-  
-- **rfc5761.rs** — Мультиплексирование RTP/RTCP согласно RFC 5761
-  - MuxPacketReader/Writer
-  - MuxedPacket (Rtp или Rtcp)
-  
-- **rfc5764.rs** — DTLS-SRTP согласно RFC 5764
-  - DtlsSrtp wrapper
-  - StreamComponent для UDP
-  
-- **traits.rs** — Базовые трейты
-  - ReadPacket<T> — чтение пакетов из byte stream
-  - WritePacket<T> — запись пакетов в byte stream
+#### Зависимости
+Проект использует оригинальные зависимости из репозитория Johni0702/mumble-web-proxy:
+- `argparse` — CLI parsing
+- `rtp` из johni0702/rtp (rev 6c0223d) — RTP/RTCP/DTLS-SRTP
+- `libnice` v0.3 — ICE для NAT traversal
+- `webrtc-sdp` v0.3 — парсинг SDP
+- `mumble-protocol` v0.4 — протокол Mumble с WebRTC расширениями
+- `tokio` v1 — async runtime
+- `tungstenite` v0.12 — WebSocket
+- `native-tls` — TLS для upstream соединений
+- `openssl` v0.10 — криптография для DTLS
 
 ## 🐳 Docker
 
